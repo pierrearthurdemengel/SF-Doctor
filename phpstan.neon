@@ -1,0 +1,23 @@
+# phpstan.neon
+#
+# Format NEON = format de config inventé par la communauté PHP (Nette).
+# C'est comme du YAML mais avec quelques différences de syntaxe.
+# PHPStan utilise ce format par convention.
+
+parameters:
+    # Le niveau d'analyse, de 0 (très permissif) à 9 (ultra strict).
+    # On démarre à 8 : c'est le standard pour un projet sérieux.
+    # Le niveau 9 ajoute des vérifications sur les types mixtes
+    # qui sont parfois pénibles au début.
+    level: 8
+
+    # Les dossiers à analyser.
+    # On analyse src/ mais PAS vendor/ ni tests/.
+    paths:
+        - src
+
+    # Les dossiers que PHPStan doit scanner pour comprendre les types
+    # (il ne les analyse pas, mais il les lit pour savoir ce que
+    # retournent les classes Symfony qu'on utilise).
+    scanDirectories:
+        - vendor/symfony

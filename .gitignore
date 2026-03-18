@@ -1,0 +1,26 @@
+# Dépendances installées par Composer.
+# Chaque développeur fait "composer install" de son côté.
+# on a juste besoin de composer.lock
+/vendor/
+
+.env.local
+
+# Cache et logs générés automatiquement.
+/var/
+
+# Override perso de PHPUnit. Le .dist est partagé, le .xml est le privé.
+/phpunit.xml
+
+# Cache de PHPStan. Généré automatiquement pour accélérer les analyses suivantes.
+/phpstan-cache/
+
+# Fichiers générés par les IDE
+/.idea/
+/.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Rapports de couverture de code générés par PHPUnit
+/coverage/

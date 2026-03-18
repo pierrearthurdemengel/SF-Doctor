@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+    .dist = fichier "distribué" avec le projet, versionné dans Git.
+    PHPUnit cherche d'abord phpunit.xml (ignoré par Git, pour mes overrides),
+    puis phpunit.xml.dist (celui-ci, partagé avec tout le monde).
+-->
+
+<phpunit
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+
+    bootstrap="vendor/autoload.php"
+    colors="true"
+    failOnRisky="true"
+    failOnWarning="true"
+>
+    <!--
+        bootstrap="vendor/autoload.php"
+        → Avant de lancer les tests, charge l'autoloader de Composer.
+          Sans ça, PHPUnit ne trouverait pas les classes (SfDoctor\Model\Issue, etc.)
+
+        colors="true"
+        → Les résultats en couleur dans le terminal. Vert = OK, rouge = erreur.
+
+        failOnRisky="true"
+        → Un test "risqué" = un test qui ne vérifie rien (pas d'assertion).
+
+        failOnWarning="true"
+        → Même logique : un warning PHPUnit = un problème à corriger, pas à ignorer.
+    -->
+
+    <testsuites>
+        <!--
+            On sépare les tests en deux suites :
+            - Unit : rapides, sans Symfony, on les lance souvent
+            - Integration : plus lents, démarrent le kernel, on les lance avant un commit
+        -->
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+    </testsuites>
+
+    <coverage>
+        <!--
+            On mesure la couverture de code UNIQUEMENT sur src/.
+            Pas sur vendor/, pas sur tests/ eux-mêmes.
+            Pour savoir quel pourcentage du code est testé.
+        -->
+        <include>
+            <directory suffix=".php">src</directory>
+        </include>
+    </coverage>
+</phpunit>
