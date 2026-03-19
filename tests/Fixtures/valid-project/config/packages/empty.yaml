@@ -1,0 +1,2 @@
+# Fichier YAML vide (juste ce commentaire).
+# Yaml::parseFile retourne null pour un fichier sans contenu réel.
