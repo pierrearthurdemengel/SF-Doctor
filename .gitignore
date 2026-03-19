@@ -24,3 +24,10 @@ Thumbs.db
 
 # Rapports de couverture de code générés par PHPUnit
 /coverage/
+
+# Cache de résultats PHPUnit
+.phpunit.result.cache
+
+# Fichiers de suivi du projet (notes perso, specs de travail)
+PROMPT-SF-DOCTOR.md
+SF-DOCTOR-SPEC.md

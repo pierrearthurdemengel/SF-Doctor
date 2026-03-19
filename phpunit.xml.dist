@@ -44,14 +44,14 @@
         </testsuite>
     </testsuites>
 
-    <coverage>
         <!--
             On mesure la couverture de code UNIQUEMENT sur src/.
             Pas sur vendor/, pas sur tests/ eux-mêmes.
             Pour savoir quel pourcentage du code est testé.
         -->
+    <source>
         <include>
             <directory suffix=".php">src</directory>
         </include>
-    </coverage>
+    </source>
 </phpunit>
