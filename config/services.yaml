@@ -38,6 +38,11 @@ services:
             $configReader: '@SfDoctor\Config\YamlConfigReader'
             $parameterResolver: '@SfDoctor\Config\ContainerParameterResolver'
 
+    SfDoctor\Analyzer\Architecture\ControllerAnalyzer:
+        public: true
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+
     # --- Commande CLI ---
 
     SfDoctor\Command\AuditCommand:
