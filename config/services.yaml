@@ -31,6 +31,13 @@ services:
             $configReader: '@SfDoctor\Config\YamlConfigReader'
             $parameterResolver: '@SfDoctor\Config\ContainerParameterResolver'
 
+    SfDoctor\Analyzer\Security\CsrfAnalyzer:
+        public: true
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+            $configReader: '@SfDoctor\Config\YamlConfigReader'
+            $parameterResolver: '@SfDoctor\Config\ContainerParameterResolver'
+
     # --- Commande CLI ---
 
     SfDoctor\Command\AuditCommand:
