@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  tests:
+    name: PHP ${{ matrix.php }} - Symfony ${{ matrix.symfony }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3']
+        symfony: ['6.4.*', '7.1.*']
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Installation de PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, xml, ctype, iconv
+          coverage: xdebug
+
+      - name: Validation du composer.json
+        run: composer validate --strict
+
+      - name: Cache des dependances Composer
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ matrix.php }}-${{ matrix.symfony }}-${{ hashFiles('composer.json') }}
+          restore-keys: |
+            composer-${{ matrix.php }}-${{ matrix.symfony }}-
+            composer-${{ matrix.php }}-
+
+      - name: Installation des dependances pour Symfony ${{ matrix.symfony }}
+        run: |
+          composer require symfony/framework-bundle:${{ matrix.symfony }} --no-update --no-interaction
+          composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Analyse statique PHPStan
+        run: vendor/bin/phpstan analyse src --level=8 --no-progress
+
+      - name: Tests unitaires et integration
+        run: vendor/bin/phpunit --colors=always --testdox
