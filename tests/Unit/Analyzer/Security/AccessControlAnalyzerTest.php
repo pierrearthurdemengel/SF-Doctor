@@ -62,66 +62,7 @@ class AccessControlAnalyzerTest extends TestCase
     }
 
     // =============================================
-    // Check 1 : Règle sans rôle
-    // =============================================
-
-    public function testRuleWithoutRolesCreatesWarning(): void
-    {
-        $analyzer = $this->createAnalyzer([
-            'security' => [
-                'access_control' => [
-                    // Pas de clé "roles" du tout
-                    ['path' => '^/admin'],
-                ],
-            ],
-        ]);
-        $report = $this->createReport();
-
-        $analyzer->analyze($report);
-
-        $warnings = $report->getIssuesBySeverity(Severity::WARNING);
-        $this->assertCount(1, $warnings);
-        $this->assertStringContainsString('sans rôle', $warnings[0]->getMessage());
-    }
-
-    public function testRuleWithEmptyArrayRolesCreatesWarning(): void
-    {
-        $analyzer = $this->createAnalyzer([
-            'security' => [
-                'access_control' => [
-                    ['path' => '^/admin', 'roles' => []],
-                ],
-            ],
-        ]);
-        $report = $this->createReport();
-
-        $analyzer->analyze($report);
-
-        $warnings = $report->getIssuesBySeverity(Severity::WARNING);
-        $this->assertCount(1, $warnings);
-        $this->assertStringContainsString('vide', $warnings[0]->getMessage());
-    }
-
-    public function testRuleWithEmptyStringRolesCreatesWarning(): void
-    {
-        $analyzer = $this->createAnalyzer([
-            'security' => [
-                'access_control' => [
-                    ['path' => '^/admin', 'roles' => ''],
-                ],
-            ],
-        ]);
-        $report = $this->createReport();
-
-        $analyzer->analyze($report);
-
-        $warnings = $report->getIssuesBySeverity(Severity::WARNING);
-        $this->assertCount(1, $warnings);
-        $this->assertStringContainsString('vide', $warnings[0]->getMessage());
-    }
-
-    // =============================================
-    // Check 2 : Rôles dépréciés
+    // Check 1 : Rôles dépréciés
     // =============================================
 
     public function testDeprecatedAnonymousRoleCreatesWarning(): void
@@ -199,7 +140,7 @@ class AccessControlAnalyzerTest extends TestCase
     }
 
     // =============================================
-    // Check 3 : Ordre des règles attrape-tout
+    // Check 2 : Ordre des règles attrape-tout
     // =============================================
 
     public function testCatchAllRuleNotLastCreatesCritical(): void
@@ -280,7 +221,7 @@ class AccessControlAnalyzerTest extends TestCase
     }
 
     // =============================================
-    // Check 4 : Chemins sensibles non couverts
+    // Check 3 : Chemins sensibles non couverts
     // =============================================
 
     public function testUncoveredAdminPathCreatesSuggestion(): void
@@ -364,6 +305,25 @@ class AccessControlAnalyzerTest extends TestCase
 
         $suggestions = $report->getIssuesBySeverity(Severity::SUGGESTION);
         $this->assertCount(0, $suggestions);
+    }
+
+    public function testNoSuggestionWhenUnresolvedParametersPresent(): void
+    {
+        // %sylius.security.admin_regex% ne peut pas etre resolu en mode standalone.
+        // On ne sait pas ce que cette regle couvre - pas de suggestion.
+        $analyzer = $this->createAnalyzer([
+            'security' => [
+                'access_control' => [
+                    ['path' => '%sylius.security.admin_regex%/login', 'roles' => 'PUBLIC_ACCESS'],
+                    ['path' => '%sylius.security.admin_regex%', 'roles' => 'ROLE_ADMIN'],
+                ],
+            ],
+        ]);
+        $report = $this->createReport();
+
+        $analyzer->analyze($report);
+
+        $this->assertCount(0, $report->getIssuesBySeverity(Severity::SUGGESTION));
     }
 
     // =============================================

@@ -82,7 +82,7 @@ final class NplusOneAnalyzer implements AnalyzerInterface
             // {{ loopVar.relation.property }} - signe d'un lazy-load potentiel.
             $pattern = '/\b' . preg_quote($loopVar, '/') . '\.\w+\.\w+/';
 
-            if (preg_match($pattern, $line, $accessMatch)) {
+            if (preg_match($pattern, $line, $accessMatch) && !str_contains($accessMatch[0], '.vars.')) {
                 $report->addIssue(new Issue(
                     severity: Severity::WARNING,
                     module: Module::PERFORMANCE,

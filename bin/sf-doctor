@@ -1,54 +1,79 @@
 #!/usr/bin/env php
 <?php
 
-// #!/usr/bin/env php → c'est le "shebang".
-// Il dit au système : "ce fichier doit être exécuté par PHP".
-// Grâce à ça, sur Linux/Mac, on peux taper "./bin/sf-doctor" directement
-// au lieu de "php bin/sf-doctor".
-// Sur Windows, tape "php bin/sf-doctor".
-
-// --- Étape 1 : Charger l'autoloader ---
-// C'est toujours la première chose à faire dans un script PHP.
-// Sans ça, PHP ne sait pas où trouver SfDoctor\Model\Issue, etc.
 require __DIR__ . '/../vendor/autoload.php';
 
-use SfDoctor\Analyzer\Security\AccessControlAnalyzer;
-use SfDoctor\Analyzer\Security\FirewallAnalyzer;
-use SfDoctor\Command\AuditCommand;
-use SfDoctor\Config\YamlConfigReader;
-use SfDoctor\Report\ConsoleReporter;
+use PierreArthur\SfDoctor\Analyzer\Architecture\ControllerAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Configuration\DebugModeAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Performance\NplusOneAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Security\AccessControlAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Security\CsrfAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Security\FirewallAnalyzer;
+use PierreArthur\SfDoctor\Command\AuditCommand;
+use PierreArthur\SfDoctor\Config\NullParameterResolver;
+use PierreArthur\SfDoctor\Config\YamlConfigReader;
+use PierreArthur\SfDoctor\Report\ConsoleReporter;
+use PierreArthur\SfDoctor\Report\JsonReporter;
+use PierreArthur\SfDoctor\Report\PdfReporter;
 use Symfony\Component\Console\Application;
+use Symfony\Component\Console\Input\ArgvInput;
+use Symfony\Component\Console\Output\ConsoleOutput;
 
-// --- Étape 2 : Déterminer le chemin du projet à auditer ---
-// Par défaut, on audite le répertoire courant (là où la commande est lancée).
-// L'utilisateur lance "php bin/sf-doctor" depuis la racine de son projet Symfony.
-$projectPath = getcwd();
+// Lecture du chemin du projet depuis le premier argument CLI.
+// Si aucun argument n'est passe, on audite le repertoire courant.
+$projectPath = isset($argv[1]) && !str_starts_with($argv[1], '-')
+    ? rtrim($argv[1], DIRECTORY_SEPARATOR)
+    : (getcwd() ?: '.');
 
-// --- Étape 3 : Câblage manuel ---
+if (!is_dir($projectPath)) {
+    echo "Erreur : le chemin \"{$projectPath}\" n'existe pas." . PHP_EOL;
+    exit(1);
+}
 
-// 3a. Le lecteur de config a besoin du chemin du projet
-$configReader = new YamlConfigReader($projectPath);
+// Charger l'autoloader du projet audite pour que les supports() fonctionnent.
+$targetAutoloader = $projectPath . '/vendor/autoload.php';
+if (file_exists($targetAutoloader)) {
+    require $targetAutoloader;
+}
 
-// 3b. Les analyzers ont besoin du lecteur de config
+$configReader        = new YamlConfigReader($projectPath);
+$parameterResolver   = new NullParameterResolver();
+$output              = new ConsoleOutput();
+
+// Determination du format de sortie pour le PdfReporter.
+// On cherche --format=pdf dans les arguments pour construire le bon reporter.
+$format = 'console';
+foreach ($argv as $arg) {
+    if (str_starts_with($arg, '--format=')) {
+        $format = substr($arg, strlen('--format='));
+    }
+}
+
+$pdfPath = $projectPath . '/sf-doctor-report.pdf';
+
 $analyzers = [
-    new FirewallAnalyzer($configReader),
-    new AccessControlAnalyzer($configReader),
+    new FirewallAnalyzer($configReader, $parameterResolver),
+    new AccessControlAnalyzer($configReader, $parameterResolver),
+    new CsrfAnalyzer($projectPath, $configReader, $parameterResolver),
+    new ControllerAnalyzer($projectPath),
+    new DebugModeAnalyzer($projectPath),
+    new NplusOneAnalyzer($projectPath),
 ];
 
-// 3c. On ne peut pas créer le ConsoleReporter ici car on n'a pas encore
-// l'OutputInterface. La commande le créera elle-même dans execute().
-// Pour l'instant, on passe un tableau vide de reporters
+$reporters = [
+    new ConsoleReporter($output),
+    new JsonReporter($output),
+    new PdfReporter($pdfPath),
+];
 
-// --- Étape 4 : Créer l'application Console ---
-// Application est la coquille qui gère les commandes.
-// C'est le "bin/console" de Symfony, en miniature.
-$application = new Application('SF Doctor', '0.1.0');
-
-// --- Étape 5 : Enregistrer la commande ---
-$application->add(new AuditCommand($analyzers, [], $projectPath));
-
-// --- Étape 6 : Lancer l'application ---
-// run() lit les arguments de la ligne de commande ($_SERVER['argv']),
-// trouve la bonne commande, et l'exécute.
+$application = new Application('SF Doctor', '1.0.0');
+$application->add(new AuditCommand($analyzers, $reporters, $projectPath, $parameterResolver));
 $application->setDefaultCommand('sf-doctor:audit', true);
-$application->run();
+// On retire le chemin du projet des arguments passes a la Console.
+// La commande recoit deja $projectPath via son constructeur.
+$filteredArgv = array_values(array_filter(
+    $argv,
+    fn (string $arg): bool => $arg === $argv[0] || str_starts_with($arg, '-'),
+));
+
+$application->run(new ArgvInput($filteredArgv), $output);

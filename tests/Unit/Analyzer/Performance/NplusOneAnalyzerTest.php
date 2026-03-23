@@ -40,6 +40,22 @@ final class NplusOneAnalyzerTest extends TestCase
 
     // --- analyze() : cas sans probleme ---
 
+    public function testNoIssueForFormVarsAccess(): void
+    {
+        // form.vars.value, field.vars.errors = acces memoire Symfony, pas de requete SQL.
+        $this->writeTwig('form.html.twig', <<<TWIG
+            {% for field in form %}
+                {{ field.vars.value }}
+                {{ field.vars.errors }}
+            {% endfor %}
+            TWIG
+        );
+
+        $report = $this->runAnalyzer();
+
+        $this->assertCount(0, $report->getIssues());
+    }
+
     public function testNoIssueWhenTemplatesDirIsEmpty(): void
     {
         $analyzer = new NplusOneAnalyzer($this->tmpDir);

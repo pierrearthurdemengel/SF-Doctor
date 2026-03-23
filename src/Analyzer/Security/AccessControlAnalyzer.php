@@ -47,17 +47,14 @@ final class AccessControlAnalyzer implements AnalyzerInterface
                 continue;
             }
 
-            // Check 1 : Règle sans rôle requis
-            $this->checkMissingRoles($report, $rule, $index);
-
-            // Check 2 : Utilisation de rôles dépréciés
+            // Check 1 : Utilisation de rôles dépréciés
             $this->checkDeprecatedRoles($report, $rule, $index);
         }
 
-        // Check 3 : Règle "attrape-tout" mal placée (pas en dernière position)
+        // Check 2 : Règle "attrape-tout" mal placée (pas en dernière position)
         $this->checkCatchAllOrder($report, $accessControl);
 
-        // Check 4 : Les chemins sensibles sont-ils protégés ?
+        // Check 3 : Les chemins sensibles sont-ils protégés ?
         $this->checkSensitivePaths($report, $accessControl);
     }
 
@@ -77,51 +74,6 @@ final class AccessControlAnalyzer implements AnalyzerInterface
     }
 
     // --- Checks privés ---
-
-    /**
-     * Vérifie qu'une règle access_control a bien un rôle requis.
-     *
-     * Une règle sans "roles" laisse passer tout le monde.
-     * C'est rarement intentionnel.
-     *
-     * @param array<mixed> $rule
-     */
-    private function checkMissingRoles(AuditReport $report, array $rule, int $index): void
-    {
-        // "roles" peut être une string ou un tableau dans security.yaml.
-        // S'il est absent, la règle ne demande aucun rôle → tout le monde passe.
-        if (!isset($rule['roles'])) {
-            $path = $rule['path'] ?? '(non défini)';
-
-            $report->addIssue(new Issue(
-                severity: Severity::WARNING,
-                module: Module::SECURITY,
-                analyzer: $this->getName(),
-                message: "Règle access_control #{$index} sans rôle requis (path: {$path})",
-                detail: "Cette règle n'exige aucun rôle. Tout utilisateur, "
-                    . "même non authentifié, peut accéder à ce chemin.",
-                suggestion: "Ajouter un rôle : roles: ROLE_USER ou roles: IS_AUTHENTICATED_FULLY",
-                file: 'config/packages/security.yaml',
-            ));
-            return;
-        }
-
-        // "roles" existe mais est vide (ex: roles: [] ou roles: '')
-        $roles = $rule['roles'];
-        if ((is_array($roles) && empty($roles)) || (is_string($roles) && trim($roles) === '')) {
-            $path = $rule['path'] ?? '(non défini)';
-
-            $report->addIssue(new Issue(
-                severity: Severity::WARNING,
-                module: Module::SECURITY,
-                analyzer: $this->getName(),
-                message: "Règle access_control #{$index} avec rôle vide (path: {$path})",
-                detail: "Le champ 'roles' est présent mais vide. C'est probablement un oubli.",
-                suggestion: "Spécifier un rôle : roles: ROLE_USER",
-                file: 'config/packages/security.yaml',
-            ));
-        }
-    }
 
     /**
      * Détecte les rôles dépréciés dans les règles access_control.
@@ -237,6 +189,14 @@ final class AccessControlAnalyzer implements AnalyzerInterface
      */
     private function checkSensitivePaths(AuditReport $report, array $accessControl): void
     {
+
+        // Si des parametres non resolus sont presents, on ne peut pas determiner
+        // avec certitude quels chemins sont couverts. On suspend les suggestions
+        // pour eviter les faux positifs.
+        if ($this->hasUnresolvedParameters($accessControl)) {
+            return;
+        }
+
         // Liste des chemins sensibles courants dans un projet Symfony.
         // Pour chaque chemin, on vérifie qu'au moins une règle access_control
         // le couvre (son pattern matche le chemin).
@@ -297,4 +257,29 @@ final class AccessControlAnalyzer implements AnalyzerInterface
 
         return false;
     }
+
+    /**
+     * Verifie si au moins une regle contient un parametre Symfony non resolu.
+     *
+     * En mode standalone, les parametres %param% ne sont pas resolus.
+     * On ne peut pas determiner ce que couvre une regle comme %sylius.security.admin_regex%.
+     * Dans ce cas, emettre une suggestion serait un faux positif.
+     *
+     * @param list<mixed> $accessControl
+     */
+    private function hasUnresolvedParameters(array $accessControl): bool
+    {
+        foreach ($accessControl as $rule) {
+            if (!is_array($rule) || !isset($rule['path'])) {
+                continue;
+            }
+
+            if (preg_match('/%[^%]+%/', (string) $rule['path'])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
 }
