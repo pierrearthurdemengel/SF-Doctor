@@ -54,4 +54,8 @@
             <directory suffix=".php">src</directory>
         </include>
     </source>
+
+    <php>
+        <env name="KERNEL_CLASS" value="SfDoctor\Tests\Integration\TestKernel"/>
+    </php>
 </phpunit>

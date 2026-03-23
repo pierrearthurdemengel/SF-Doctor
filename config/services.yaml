@@ -1,0 +1,45 @@
+# Declaration des services du bundle SF-Doctor.
+#
+# Ce fichier est charge par SfDoctorExtension::load().
+# Il declare les services internes du bundle, pas ceux du projet utilisateur.
+#
+# %kernel.project_dir% est un parametre fourni par Symfony.
+# Il contient le chemin racine du projet qui utilise ce bundle.
+#
+# Les services sont declares "public: true" car c'est un bundle.
+# Les developpeurs qui installent SF-Doctor peuvent avoir besoin
+# d'acceder a ces services (injection, remplacement, decoration).
+# Dans un projet applicatif (pas un bundle), on les laisserait prives.
+
+services:
+
+    # --- Lecture de configuration ---
+
+    SfDoctor\Config\YamlConfigReader:
+        public: true
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+
+    # --- Analyzers Security ---
+    # Le tag "sf_doctor.analyzer" est ajoute automatiquement
+    # par autoconfigure (voir SfDoctorBundle::build).
+
+    SfDoctor\Analyzer\Security\FirewallAnalyzer:
+        public: true
+        arguments:
+            $configReader: '@SfDoctor\Config\YamlConfigReader'
+
+    SfDoctor\Analyzer\Security\AccessControlAnalyzer:
+        public: true
+        arguments:
+            $configReader: '@SfDoctor\Config\YamlConfigReader'
+
+    # --- Commande CLI ---
+
+    SfDoctor\Command\AuditCommand:
+        public: true
+        arguments:
+            $analyzers: !tagged_iterator sf_doctor.analyzer
+            $reporters: !tagged_iterator sf_doctor.reporter
+            $projectPath: '%kernel.project_dir%'
+        tags: ['console.command']
