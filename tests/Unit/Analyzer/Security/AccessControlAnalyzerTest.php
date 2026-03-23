@@ -8,6 +8,8 @@ use SfDoctor\Config\ConfigReaderInterface;
 use SfDoctor\Model\AuditReport;
 use SfDoctor\Model\Module;
 use SfDoctor\Model\Severity;
+use SfDoctor\Config\NullParameterResolver;
+
 
 class AccessControlAnalyzerTest extends TestCase
 {
@@ -19,7 +21,7 @@ class AccessControlAnalyzerTest extends TestCase
         $configReader = $this->createMock(ConfigReaderInterface::class);
         $configReader->method('read')->willReturn($securityConfig);
 
-        return new AccessControlAnalyzer($configReader);
+        return new AccessControlAnalyzer($configReader, new NullParameterResolver());
     }
 
     private function createReport(): AuditReport

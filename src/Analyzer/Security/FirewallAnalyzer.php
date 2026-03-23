@@ -4,6 +4,7 @@ namespace SfDoctor\Analyzer\Security;
 
 use SfDoctor\Analyzer\AnalyzerInterface;
 use SfDoctor\Config\ConfigReaderInterface;
+use SfDoctor\Config\ParameterResolverInterface;
 use SfDoctor\Model\AuditReport;
 use SfDoctor\Model\Issue;
 use SfDoctor\Model\Module;
@@ -20,6 +21,7 @@ final class FirewallAnalyzer implements AnalyzerInterface
     // C'est le Dependency Inversion Principle en action.
     public function __construct(
         private readonly ConfigReaderInterface $configReader,
+        private readonly ParameterResolverInterface $parameterResolver,
     ) {}
 
     public function analyze(AuditReport $report): void
@@ -42,6 +44,13 @@ final class FirewallAnalyzer implements AnalyzerInterface
             // On s'arrête ici : sans config, rien d'autre à analyser.
             return;
         }
+
+        // Resoudre les parametres Symfony (%param%) avant l'analyse.
+        // En mode bundle, les %param% sont remplaces par leurs valeurs reelles.
+        // En mode standalone, la config est retournee sans modification.
+        $security = $this->parameterResolver->resolveArray($security);
+
+        $firewalls = $security['security']['firewalls'] ?? [];
 
         // --- Étape 2 : Extraire les firewalls et access_control ---
 

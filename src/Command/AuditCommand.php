@@ -2,6 +2,7 @@
 
 namespace SfDoctor\Command;
 
+use SfDoctor\Config\ParameterResolverInterface;
 use SfDoctor\Analyzer\AnalyzerInterface;
 use SfDoctor\Model\AuditReport;
 use SfDoctor\Model\Module;
@@ -46,6 +47,9 @@ final class AuditCommand extends Command
 
         // Le chemin du projet à auditer.
         private readonly string $projectPath,
+        
+        /** @phpstan-ignore-next-line */
+        private readonly ParameterResolverInterface $parameterResolver,
     ) {
         // IMPORTANT : on doit appeler le constructeur parent.
         // Command::__construct() initialise le nom et d'autres propriétés internes.

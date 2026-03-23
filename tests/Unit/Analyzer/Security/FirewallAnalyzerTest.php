@@ -3,6 +3,7 @@
 namespace SfDoctor\Tests\Unit\Analyzer\Security;
 
 use PHPUnit\Framework\TestCase;
+use SfDoctor\Config\NullParameterResolver;
 use SfDoctor\Analyzer\Security\FirewallAnalyzer;
 use SfDoctor\Config\ConfigReaderInterface;
 use SfDoctor\Model\AuditReport;
@@ -36,7 +37,7 @@ class FirewallAnalyzerTest extends TestCase
         // et on contrôle ce qu'il reçoit.
         $configReader->method('read')->willReturn($securityConfig);
 
-        return new FirewallAnalyzer($configReader);
+        return new FirewallAnalyzer($configReader, new NullParameterResolver());
     }
 
     // Helper : créer un rapport vide pour chaque test.

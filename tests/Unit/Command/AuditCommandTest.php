@@ -13,6 +13,8 @@ use SfDoctor\Report\ReporterInterface;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
+use SfDoctor\Config\NullParameterResolver;
+
 
 final class AuditCommandTest extends TestCase
 {
@@ -203,7 +205,7 @@ final class AuditCommandTest extends TestCase
      */
     private function createCommandTester(array $analyzers, array $reporters = []): CommandTester
     {
-        $command = new AuditCommand($analyzers, $reporters, self::PROJECT_PATH);
+        $command = new AuditCommand($analyzers, $reporters, self::PROJECT_PATH, new NullParameterResolver());
 
         // Application is required for CommandTester to resolve the command.
         $application = new Application('SF Doctor', 'test');

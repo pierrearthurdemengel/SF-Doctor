@@ -4,6 +4,7 @@ namespace SfDoctor\Analyzer\Security;
 
 use SfDoctor\Analyzer\AnalyzerInterface;
 use SfDoctor\Config\ConfigReaderInterface;
+use SfDoctor\Config\ParameterResolverInterface;
 use SfDoctor\Model\AuditReport;
 use SfDoctor\Model\Issue;
 use SfDoctor\Model\Module;
@@ -15,6 +16,7 @@ final class AccessControlAnalyzer implements AnalyzerInterface
     // on dépend du contrat, pas de l'implémentation.
     public function __construct(
         private readonly ConfigReaderInterface $configReader,
+        private readonly ParameterResolverInterface $parameterResolver,
     ) {}
 
     public function analyze(AuditReport $report): void
@@ -27,6 +29,9 @@ final class AccessControlAnalyzer implements AnalyzerInterface
         if ($security === null) {
             return;
         }
+
+        // Resoudre les parametres Symfony (%param%) avant l'analyse.
+        $security = $this->parameterResolver->resolveArray($security);
 
         $accessControl = $security['security']['access_control'] ?? [];
 
