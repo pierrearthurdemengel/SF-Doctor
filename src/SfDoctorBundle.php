@@ -1,9 +1,9 @@
 <?php
 
-namespace SfDoctor;
+namespace PierreArthur\SfDoctor;
 
-use SfDoctor\Analyzer\AnalyzerInterface;
-use SfDoctor\DependencyInjection\Compiler\AnalyzerCompilerPass;
+use PierreArthur\SfDoctor\Analyzer\AnalyzerInterface;
+use PierreArthur\SfDoctor\DependencyInjection\Compiler\AnalyzerCompilerPass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 

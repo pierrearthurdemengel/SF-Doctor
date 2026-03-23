@@ -4,7 +4,7 @@
 // qu'on a définie dans composer.json :
 // "SfDoctor\\" → "src/"
 // Donc SfDoctor\Model → src/Model/
-namespace SfDoctor\Model;
+namespace PierreArthur\SfDoctor\Model;
 
 // "enum" = mot-clé introduit en PHP 8.1
 // "Severity" = le nom du type (comme un nom de classe)

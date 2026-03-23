@@ -1,14 +1,14 @@
 <?php
 
-namespace SfDoctor\Command;
+namespace PierreArthur\SfDoctor\Command;
 
-use SfDoctor\Config\ParameterResolverInterface;
-use SfDoctor\Analyzer\AnalyzerInterface;
-use SfDoctor\Model\AuditReport;
-use SfDoctor\Model\Module;
-use SfDoctor\Model\Severity;
-use SfDoctor\Report\ConsoleReporter;
-use SfDoctor\Report\ReporterInterface;
+use PierreArthur\SfDoctor\Config\ParameterResolverInterface;
+use PierreArthur\SfDoctor\Analyzer\AnalyzerInterface;
+use PierreArthur\SfDoctor\Model\AuditReport;
+use PierreArthur\SfDoctor\Model\Module;
+use PierreArthur\SfDoctor\Model\Severity;
+use PierreArthur\SfDoctor\Report\ConsoleReporter;
+use PierreArthur\SfDoctor\Report\ReporterInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;

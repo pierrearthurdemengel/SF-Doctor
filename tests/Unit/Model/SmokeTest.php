@@ -1,6 +1,6 @@
 <?php
 
-namespace SfDoctor\Tests\Unit\Model;
+namespace PierreArthur\SfDoctor\Tests\Unit\Model;
 
 use PHPUnit\Framework\TestCase;
 

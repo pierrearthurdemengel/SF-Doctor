@@ -1,9 +1,9 @@
 <?php
 
-namespace SfDoctor\Analyzer;
+namespace PierreArthur\SfDoctor\Analyzer;
 
-use SfDoctor\Model\AuditReport;
-use SfDoctor\Model\Module;
+use PierreArthur\SfDoctor\Model\AuditReport;
+use PierreArthur\SfDoctor\Model\Module;
 
 // Chaque analyzer implémente ce contrat.
 interface AnalyzerInterface

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace SfDoctor\Tests\Unit\Config;
+namespace PierreArthur\SfDoctor\Tests\Unit\Config;
 
 use PHPUnit\Framework\TestCase;
-use SfDoctor\Config\ContainerParameterResolver;
+use PierreArthur\SfDoctor\Config\ContainerParameterResolver;
 use Symfony\Component\DependencyInjection\Exception\ParameterNotFoundException;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 

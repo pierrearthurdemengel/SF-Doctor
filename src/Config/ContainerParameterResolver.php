@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SfDoctor\Config;
+namespace PierreArthur\SfDoctor\Config;
 
 use Symfony\Component\DependencyInjection\Exception\ParameterNotFoundException;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;

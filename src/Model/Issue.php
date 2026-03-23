@@ -1,6 +1,6 @@
 <?php
 
-namespace SfDoctor\Model;
+namespace PierreArthur\SfDoctor\Model;
 
 // "final" = personne ne peut hériter de cette classe.
 // Parce qu'un Issue est un objet de données simple et complet.

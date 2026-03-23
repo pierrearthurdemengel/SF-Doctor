@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace SfDoctor\Analyzer\Architecture;
+namespace PierreArthur\SfDoctor\Analyzer\Architecture;
 
-use SfDoctor\Analyzer\AnalyzerInterface;
-use SfDoctor\Model\AuditReport;
-use SfDoctor\Model\Issue;
-use SfDoctor\Model\Module;
-use SfDoctor\Model\Severity;
+use PierreArthur\SfDoctor\Analyzer\AnalyzerInterface;
+use PierreArthur\SfDoctor\Model\AuditReport;
+use PierreArthur\SfDoctor\Model\Issue;
+use PierreArthur\SfDoctor\Model\Module;
+use PierreArthur\SfDoctor\Model\Severity;
 use Symfony\Component\Finder\Finder;
 
 /**

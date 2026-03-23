@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace SfDoctor\Tests\Unit\Analyzer\Architecture;
+namespace PierreArthur\SfDoctor\Tests\Unit\Analyzer\Architecture;
 
 use PHPUnit\Framework\TestCase;
-use SfDoctor\Analyzer\Architecture\ControllerAnalyzer;
-use SfDoctor\Model\AuditReport;
-use SfDoctor\Model\Module;
-use SfDoctor\Model\Severity;
+use PierreArthur\SfDoctor\Analyzer\Architecture\ControllerAnalyzer;
+use PierreArthur\SfDoctor\Model\AuditReport;
+use PierreArthur\SfDoctor\Model\Module;
+use PierreArthur\SfDoctor\Model\Severity;
 
 final class ControllerAnalyzerTest extends TestCase
 {

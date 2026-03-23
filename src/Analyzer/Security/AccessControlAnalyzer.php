@@ -1,14 +1,14 @@
 <?php
 
-namespace SfDoctor\Analyzer\Security;
+namespace PierreArthur\SfDoctor\Analyzer\Security;
 
-use SfDoctor\Analyzer\AnalyzerInterface;
-use SfDoctor\Config\ConfigReaderInterface;
-use SfDoctor\Config\ParameterResolverInterface;
-use SfDoctor\Model\AuditReport;
-use SfDoctor\Model\Issue;
-use SfDoctor\Model\Module;
-use SfDoctor\Model\Severity;
+use PierreArthur\SfDoctor\Analyzer\AnalyzerInterface;
+use PierreArthur\SfDoctor\Config\ConfigReaderInterface;
+use PierreArthur\SfDoctor\Config\ParameterResolverInterface;
+use PierreArthur\SfDoctor\Model\AuditReport;
+use PierreArthur\SfDoctor\Model\Issue;
+use PierreArthur\SfDoctor\Model\Module;
+use PierreArthur\SfDoctor\Model\Severity;
 
 final class AccessControlAnalyzer implements AnalyzerInterface
 {

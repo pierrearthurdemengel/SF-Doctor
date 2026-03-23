@@ -1,6 +1,6 @@
 <?php
 
-namespace SfDoctor\Config;
+namespace PierreArthur\SfDoctor\Config;
 
 // Une interface ne contient AUCUN code concret.
 // Pas de propriétés, pas de logique, pas de constructeur.

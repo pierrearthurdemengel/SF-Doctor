@@ -1,13 +1,13 @@
 <?php
 
-namespace SfDoctor\Tests\Unit\Report;
+namespace PierreArthur\SfDoctor\Tests\Unit\Report;
 
 use PHPUnit\Framework\TestCase;
-use SfDoctor\Model\AuditReport;
-use SfDoctor\Model\Issue;
-use SfDoctor\Model\Module;
-use SfDoctor\Model\Severity;
-use SfDoctor\Report\ConsoleReporter;
+use PierreArthur\SfDoctor\Model\AuditReport;
+use PierreArthur\SfDoctor\Model\Issue;
+use PierreArthur\SfDoctor\Model\Module;
+use PierreArthur\SfDoctor\Model\Severity;
+use PierreArthur\SfDoctor\Report\ConsoleReporter;
 use Symfony\Component\Console\Output\BufferedOutput;
 
 class ConsoleReporterTest extends TestCase

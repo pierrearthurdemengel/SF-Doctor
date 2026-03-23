@@ -1,8 +1,8 @@
 <?php
 
-namespace SfDoctor\Tests\Integration;
+namespace PierreArthur\SfDoctor\Tests\Integration;
 
-use SfDoctor\SfDoctorBundle;
+use PierreArthur\SfDoctor\SfDoctorBundle;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;

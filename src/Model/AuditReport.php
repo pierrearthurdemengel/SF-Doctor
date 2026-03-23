@@ -1,6 +1,6 @@
 <?php
 
-namespace SfDoctor\Model;
+namespace PierreArthur\SfDoctor\Model;
 
 // final : c'est un objet de données, personne n'a besoin d'en hériter.
 final class AuditReport

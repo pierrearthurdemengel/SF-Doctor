@@ -1,8 +1,8 @@
 <?php
 
-namespace SfDoctor\Report;
+namespace PierreArthur\SfDoctor\Report;
 
-use SfDoctor\Model\AuditReport;
+use PierreArthur\SfDoctor\Model\AuditReport;
 
 interface ReporterInterface
 {

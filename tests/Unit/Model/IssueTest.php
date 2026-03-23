@@ -1,11 +1,11 @@
 <?php
 
-namespace SfDoctor\Tests\Unit\Model;
+namespace PierreArthur\SfDoctor\Tests\Unit\Model;
 
 use PHPUnit\Framework\TestCase;
-use SfDoctor\Model\Issue;
-use SfDoctor\Model\Module;
-use SfDoctor\Model\Severity;
+use PierreArthur\SfDoctor\Model\Issue;
+use PierreArthur\SfDoctor\Model\Module;
+use PierreArthur\SfDoctor\Model\Severity;
 
 // La classe de test étend TestCase — la classe de base de PHPUnit.
 // C'est elle qui fournit les méthodes assert*().

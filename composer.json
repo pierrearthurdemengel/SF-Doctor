@@ -25,12 +25,12 @@
     },
     "autoload": {
         "psr-4": {
-            "SfDoctor\\": "src/"
+            "PierreArthur\\SfDoctor\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "SfDoctor\\Tests\\": "tests/"
+            "PierreArthur\\SfDoctor\\Tests\\": "tests/"
         }
     },
     "minimum-stability": "stable",

@@ -1,8 +1,8 @@
 <?php
 
-namespace SfDoctor\DependencyInjection\Compiler;
+namespace PierreArthur\SfDoctor\DependencyInjection\Compiler;
 
-use SfDoctor\Analyzer\AnalyzerInterface;
+use PierreArthur\SfDoctor\Analyzer\AnalyzerInterface;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 

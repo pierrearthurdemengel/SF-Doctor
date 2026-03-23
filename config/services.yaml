@@ -2,7 +2,7 @@ services:
 
     # --- Lecture de configuration ---
 
-    SfDoctor\Config\YamlConfigReader:
+    PierreArthur\SfDoctor\Config\YamlConfigReader:
         public: true
         arguments:
             $projectPath: '%kernel.project_dir%'
@@ -12,44 +12,44 @@ services:
     # "@parameter_bag" est un alias Symfony qui pointe vers
     # le service Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface.
 
-    SfDoctor\Config\ContainerParameterResolver:
+    PierreArthur\SfDoctor\Config\ContainerParameterResolver:
         public: true
         arguments:
             $parameterBag: '@parameter_bag'
 
     # --- Analyzers Security ---
 
-    SfDoctor\Analyzer\Security\FirewallAnalyzer:
+    PierreArthur\SfDoctor\Analyzer\Security\FirewallAnalyzer:
         public: true
         arguments:
-            $configReader: '@SfDoctor\Config\YamlConfigReader'
-            $parameterResolver: '@SfDoctor\Config\ContainerParameterResolver'
+            $configReader: '@PierreArthur\SfDoctor\Config\YamlConfigReader'
+            $parameterResolver: '@PierreArthur\SfDoctor\Config\ContainerParameterResolver'
 
-    SfDoctor\Analyzer\Security\AccessControlAnalyzer:
+    PierreArthur\SfDoctor\Analyzer\Security\AccessControlAnalyzer:
         public: true
         arguments:
-            $configReader: '@SfDoctor\Config\YamlConfigReader'
-            $parameterResolver: '@SfDoctor\Config\ContainerParameterResolver'
+            $configReader: '@PierreArthur\SfDoctor\Config\YamlConfigReader'
+            $parameterResolver: '@PierreArthur\SfDoctor\Config\ContainerParameterResolver'
 
-    SfDoctor\Analyzer\Security\CsrfAnalyzer:
+    PierreArthur\SfDoctor\Analyzer\Security\CsrfAnalyzer:
         public: true
         arguments:
             $projectPath: '%kernel.project_dir%'
-            $configReader: '@SfDoctor\Config\YamlConfigReader'
-            $parameterResolver: '@SfDoctor\Config\ContainerParameterResolver'
+            $configReader: '@PierreArthur\SfDoctor\Config\YamlConfigReader'
+            $parameterResolver: '@PierreArthur\SfDoctor\Config\ContainerParameterResolver'
 
-    SfDoctor\Analyzer\Architecture\ControllerAnalyzer:
+    PierreArthur\SfDoctor\Analyzer\Architecture\ControllerAnalyzer:
         public: true
         arguments:
             $projectPath: '%kernel.project_dir%'
 
     # --- Commande CLI ---
 
-    SfDoctor\Command\AuditCommand:
+    PierreArthur\SfDoctor\Command\AuditCommand:
         public: true
         arguments:
             $analyzers: !tagged_iterator sf_doctor.analyzer
             $reporters: !tagged_iterator sf_doctor.reporter
             $projectPath: '%kernel.project_dir%'
-            $parameterResolver: '@SfDoctor\Config\ContainerParameterResolver'
+            $parameterResolver: '@PierreArthur\SfDoctor\Config\ContainerParameterResolver'
         tags: ['console.command']

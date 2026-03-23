@@ -1,11 +1,11 @@
 <?php
 
-namespace SfDoctor\Report;
+namespace PierreArthur\SfDoctor\Report;
 
-use SfDoctor\Model\AuditReport;
-use SfDoctor\Model\Issue;
-use SfDoctor\Model\Module;
-use SfDoctor\Model\Severity;
+use PierreArthur\SfDoctor\Model\AuditReport;
+use PierreArthur\SfDoctor\Model\Issue;
+use PierreArthur\SfDoctor\Model\Module;
+use PierreArthur\SfDoctor\Model\Severity;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Console\Input\ArrayInput;

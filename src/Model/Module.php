@@ -1,6 +1,6 @@
 <?php
 
-namespace SfDoctor\Model;
+namespace PierreArthur\SfDoctor\Model;
 
 enum Module: string
 {

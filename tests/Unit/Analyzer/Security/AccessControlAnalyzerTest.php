@@ -1,14 +1,14 @@
 <?php
 
-namespace SfDoctor\Tests\Unit\Analyzer\Security;
+namespace PierreArthur\SfDoctor\Tests\Unit\Analyzer\Security;
 
 use PHPUnit\Framework\TestCase;
-use SfDoctor\Analyzer\Security\AccessControlAnalyzer;
-use SfDoctor\Config\ConfigReaderInterface;
-use SfDoctor\Model\AuditReport;
-use SfDoctor\Model\Module;
-use SfDoctor\Model\Severity;
-use SfDoctor\Config\NullParameterResolver;
+use PierreArthur\SfDoctor\Analyzer\Security\AccessControlAnalyzer;
+use PierreArthur\SfDoctor\Config\ConfigReaderInterface;
+use PierreArthur\SfDoctor\Model\AuditReport;
+use PierreArthur\SfDoctor\Model\Module;
+use PierreArthur\SfDoctor\Model\Severity;
+use PierreArthur\SfDoctor\Config\NullParameterResolver;
 
 
 class AccessControlAnalyzerTest extends TestCase

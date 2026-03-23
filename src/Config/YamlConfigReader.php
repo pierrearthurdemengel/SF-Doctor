@@ -1,6 +1,6 @@
 <?php
 
-namespace SfDoctor\Config;
+namespace PierreArthur\SfDoctor\Config;
 
 // Le composant Yaml de Symfony. C'est lui qui sait transformer
 // une string YAML en tableau PHP

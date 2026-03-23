@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SfDoctor\Config;
+namespace PierreArthur\SfDoctor\Config;
 
 /**
  * Implementation sans operation du ParameterResolverInterface.

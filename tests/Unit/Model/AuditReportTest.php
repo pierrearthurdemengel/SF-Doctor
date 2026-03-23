@@ -1,12 +1,12 @@
 <?php
 
-namespace SfDoctor\Tests\Unit\Model;
+namespace PierreArthur\SfDoctor\Tests\Unit\Model;
 
 use PHPUnit\Framework\TestCase;
-use SfDoctor\Model\AuditReport;
-use SfDoctor\Model\Issue;
-use SfDoctor\Model\Module;
-use SfDoctor\Model\Severity;
+use PierreArthur\SfDoctor\Model\AuditReport;
+use PierreArthur\SfDoctor\Model\Issue;
+use PierreArthur\SfDoctor\Model\Module;
+use PierreArthur\SfDoctor\Model\Severity;
 
 class AuditReportTest extends TestCase
 {

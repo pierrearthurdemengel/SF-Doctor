@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace SfDoctor\Tests\Unit\Config;
+namespace PierreArthur\SfDoctor\Tests\Unit\Config;
 
 use PHPUnit\Framework\TestCase;
-use SfDoctor\Config\NullParameterResolver;
+use PierreArthur\SfDoctor\Config\NullParameterResolver;
 
 final class NullParameterResolverTest extends TestCase
 {

@@ -1,12 +1,12 @@
 <?php
 
-namespace SfDoctor\Tests\Integration;
+namespace PierreArthur\SfDoctor\Tests\Integration;
 
-use SfDoctor\Analyzer\AnalyzerInterface;
-use SfDoctor\Analyzer\Security\AccessControlAnalyzer;
-use SfDoctor\Analyzer\Security\FirewallAnalyzer;
-use SfDoctor\Command\AuditCommand;
-use SfDoctor\Config\YamlConfigReader;
+use PierreArthur\SfDoctor\Analyzer\AnalyzerInterface;
+use PierreArthur\SfDoctor\Analyzer\Security\AccessControlAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Security\FirewallAnalyzer;
+use PierreArthur\SfDoctor\Command\AuditCommand;
+use PierreArthur\SfDoctor\Config\YamlConfigReader;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;

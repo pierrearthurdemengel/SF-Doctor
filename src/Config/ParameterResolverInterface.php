@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace SfDoctor\Config;
+namespace PierreArthur\SfDoctor\Config;
 
 /**
  * Resout les parametres Symfony (%param%) dans un tableau de configuration.

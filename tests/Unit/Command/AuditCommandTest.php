@@ -1,19 +1,19 @@
 <?php
 
-namespace SfDoctor\Tests\Unit\Command;
+namespace PierreArthur\SfDoctor\Tests\Unit\Command;
 
 use PHPUnit\Framework\TestCase;
-use SfDoctor\Analyzer\AnalyzerInterface;
-use SfDoctor\Command\AuditCommand;
-use SfDoctor\Model\AuditReport;
-use SfDoctor\Model\Issue;
-use SfDoctor\Model\Module;
-use SfDoctor\Model\Severity;
-use SfDoctor\Report\ReporterInterface;
+use PierreArthur\SfDoctor\Analyzer\AnalyzerInterface;
+use PierreArthur\SfDoctor\Command\AuditCommand;
+use PierreArthur\SfDoctor\Model\AuditReport;
+use PierreArthur\SfDoctor\Model\Issue;
+use PierreArthur\SfDoctor\Model\Module;
+use PierreArthur\SfDoctor\Model\Severity;
+use PierreArthur\SfDoctor\Report\ReporterInterface;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
-use SfDoctor\Config\NullParameterResolver;
+use PierreArthur\SfDoctor\Config\NullParameterResolver;
 
 
 final class AuditCommandTest extends TestCase

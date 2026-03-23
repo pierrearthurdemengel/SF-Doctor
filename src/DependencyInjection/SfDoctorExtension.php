@@ -1,6 +1,6 @@
 <?php
 
-namespace SfDoctor\DependencyInjection;
+namespace PierreArthur\SfDoctor\DependencyInjection;
 
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
