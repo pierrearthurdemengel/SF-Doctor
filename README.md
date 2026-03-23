@@ -2,7 +2,10 @@
 
 **Outil CLI d'audit automatise pour projets Symfony.**
 
-SF-Doctor analyse la configuration de securite de vos projets Symfony et detecte les failles, les mauvaises pratiques et les oublis de configuration. Un rapport clair, des recommandations concretes, directement dans votre terminal.
+SF-Doctor analyse la configuration de vos projets Symfony et detecte les failles,
+les mauvaises pratiques et les oublis de configuration. Un rapport clair, des
+recommandations concretes, directement dans votre terminal ou au format JSON pour
+votre pipeline CI/CD.
 
 [![CI](https://github.com/sf-doctor/sf-doctor/actions/workflows/ci.yaml/badge.svg)](https://github.com/sf-doctor/sf-doctor/actions/workflows/ci.yaml)
 [![PHPStan level 8](https://img.shields.io/badge/PHPStan-level%208-brightgreen.svg)](https://phpstan.org/)
@@ -11,18 +14,36 @@ SF-Doctor analyse la configuration de securite de vos projets Symfony et detecte
 
 ---
 
-## Ce que SF-Doctor detecte (V0.1 - Module Security)
+## Ce que SF-Doctor detecte
 
-**Analyse des firewalls** (`security.yaml`)
+### Module Security
+
+**FirewallAnalyzer** (`security.yaml`)
 - Firewalls sans systeme d'authentification configure
 - Firewalls sans regles d'access_control
 - Firewalls en mode lazy sans authentication requise
 
-**Analyse de l'access_control**
+**AccessControlAnalyzer** (`security.yaml`)
 - Regles sans role defini (acces ouvert a tous)
 - Utilisation de roles deprecies (`IS_AUTHENTICATED_ANONYMOUSLY`)
 - Regles catch-all (`^/`) placees trop tot (bloquent les regles suivantes)
 - Chemins sensibles (`/admin`, `/api`) sans restriction d'acces
+
+**CsrfAnalyzer** (`framework.yaml`, `src/Form/`)
+- Protection CSRF desactivee globalement dans `framework.yaml` (CRITICAL)
+- Protection CSRF desactivee sur des FormType individuels (WARNING)
+
+### Module Architecture
+
+**ControllerAnalyzer** (`src/Controller/`)
+- Requetes Doctrine (`createQueryBuilder`, `createQuery`) dans les controllers (CRITICAL)
+- Acces direct a l'EntityManager pour des operations metier dans les controllers (WARNING)
+
+### Module Configuration
+
+**DebugModeAnalyzer** (`.env.prod`, `.env`)
+- `APP_ENV` absent ou different de `prod` en production (CRITICAL/WARNING)
+- `APP_DEBUG=true` active en production (CRITICAL)
 
 ---
 
@@ -34,9 +55,8 @@ SF-Doctor analyse la configuration de securite de vos projets Symfony et detecte
 ---
 
 ## Installation
-
 ```bash
-composer require --dev sf-doctor/sf-doctor
+composer require --dev pierre-arthur/sf-doctor
 ```
 
 ---
@@ -48,100 +68,138 @@ composer require --dev sf-doctor/sf-doctor
 Si votre projet utilise Symfony Flex, le bundle est enregistre automatiquement.
 
 Sinon, ajoutez-le dans `config/bundles.php` :
-
 ```php
 return [
     // ...
-    SfDoctor\SfDoctorBundle::class => ['dev' => true, 'test' => true],
+    PierreArthur\SfDoctor\SfDoctorBundle::class => ['dev' => true, 'test' => true],
 ];
 ```
 
 Lancez l'audit :
-
 ```bash
 bin/console sf-doctor:audit
 ```
 
 Options disponibles :
-
 ```bash
 # Auditer un chemin specifique
 bin/console sf-doctor:audit /chemin/vers/le/projet
 
-# Auditer uniquement le module securite
-bin/console sf-doctor:audit --security
+# Sortie JSON pour CI/CD
+bin/console sf-doctor:audit --format=json
 ```
 
 ### En mode standalone (sans bundle)
 
-SF-Doctor peut aussi fonctionner en dehors d'un projet Symfony, via son script integre :
-
+SF-Doctor peut aussi fonctionner en dehors d'un projet Symfony :
 ```bash
 vendor/bin/sf-doctor /chemin/vers/le/projet/symfony
 ```
 
 ---
 
-## Exemple de sortie
-
+## Exemple de sortie console
 ```
- SF-Doctor - Audit de securite
- ==============================
+ SF-Doctor - Rapport d'audit
+ ============================
 
- Analyse du projet : /var/www/mon-projet
+ Projet : /var/www/mon-projet
+ Issues trouvees : 3
 
- SECURITE - Analyse des firewalls
- ---------------------------------
+ Module Security
+ ----------------
 
- ---------- ---------- ---------------------------------------------------
-  Severite   Fichier    Description
- ---------- ---------- ---------------------------------------------------
-  CRITICAL   security   Le firewall "main" n'a aucun authenticator configure
-  WARNING    security   Le firewall "main" n'a pas de regle access_control
- ---------- ---------- ---------------------------------------------------
+ ---------- ------------------- --------------------------------------------- ---------------------------
+  Severite   Analyzer            Message                                        Fichier
+ ---------- ------------------- --------------------------------------------- ---------------------------
+  CRITICAL   FirewallAnalyzer    No authenticator configured on firewall main   config/packages/security.yaml
+  WARNING    CsrfAnalyzer        CSRF disabled on CheckoutType                  src/Form/CheckoutType.php
+ ---------- ------------------- --------------------------------------------- ---------------------------
 
- SECURITE - Analyse de l'access_control
- ----------------------------------------
+ Module Configuration
+ ---------------------
 
- ---------- ---------- ---------------------------------------------------
-  Severite   Fichier    Description
- ---------- ---------- ---------------------------------------------------
-  CRITICAL   security   La route "/admin" n'a aucune restriction d'acces
-  WARNING    security   Le role IS_AUTHENTICATED_ANONYMOUSLY est deprecie
- ---------- ---------- ---------------------------------------------------
+ ---------- -------------------- ----------------------- -----------
+  Severite   Analyzer             Message                 Fichier
+ ---------- -------------------- ----------------------- -----------
+  CRITICAL   DebugModeAnalyzer    APP_DEBUG is true       .env.prod
+ ---------- -------------------- ----------------------- -----------
 
- Score global : 35/100
+ Score : 70/100
+```
 
- 2 problemes critiques, 2 avertissements, 0 suggestions
+## Exemple de sortie JSON
+```bash
+bin/console sf-doctor:audit --format=json
+```
+```json
+{
+    "meta": {
+        "generated_at": "2024-01-15T10:30:00+00:00",
+        "project_path": "/var/www/mon-projet"
+    },
+    "summary": {
+        "score": 70,
+        "status": "critical",
+        "issues_count": {
+            "total": 3,
+            "critical": 2,
+            "warning": 1,
+            "suggestion": 0
+        }
+    },
+    "issues": [
+        {
+            "severity": "critical",
+            "module": "security",
+            "analyzer": "FirewallAnalyzer",
+            "message": "No authenticator configured on firewall main",
+            "detail": "...",
+            "suggestion": "Add form_login or custom_authenticator",
+            "file": "config/packages/security.yaml",
+            "line": null
+        }
+    ]
+}
+```
+
+Bloquer la CI si le statut est `critical` :
+```yaml
+# .github/workflows/ci.yaml
+- name: Audit Symfony
+  run: |
+    OUTPUT=$(bin/console sf-doctor:audit --format=json)
+    STATUS=$(echo $OUTPUT | jq -r '.summary.status')
+    if [ "$STATUS" = "critical" ]; then exit 1; fi
 ```
 
 ---
 
 ## Architecture
 
-SF-Doctor est concu comme un bundle Symfony extensible. Chaque verification est un **Analyzer** independant qui implemente `AnalyzerInterface`.
-
+SF-Doctor est concu comme un bundle Symfony extensible. Chaque verification est un
+**Analyzer** independant qui implemente `AnalyzerInterface`.
 ```
 src/
-├── Analyzer/           # Les analyseurs (coeur metier)
-│   └── Security/       # Module securite
-│       ├── FirewallAnalyzer.php
-│       └── AccessControlAnalyzer.php
-├── Command/            # Commande CLI (sf-doctor:audit)
-├── Config/             # Lecture des fichiers YAML du projet audite
-├── Model/              # Issue, AuditReport, Severity, Module
-├── Report/             # Generateurs de rapports (console, JSON, PDF)
-└── DependencyInjection/  # Integration au container Symfony
+├── Analyzer/
+│   ├── Architecture/           # ControllerAnalyzer
+│   ├── Configuration/          # DebugModeAnalyzer
+│   └── Security/               # FirewallAnalyzer, AccessControlAnalyzer, CsrfAnalyzer
+├── Command/                    # Commande CLI (sf-doctor:audit)
+├── Config/                     # Lecture YAML + resolution des parametres Symfony
+├── Model/                      # Issue, AuditReport, Severity, Module
+├── Report/                     # ConsoleReporter, JsonReporter
+└── DependencyInjection/        # Integration au container Symfony
 ```
 
 ### Creer un analyzer custom
 
-Implementez `AnalyzerInterface` et le tag `sf_doctor.analyzer` est ajoute automatiquement via autoconfigure :
-
+Implementez `AnalyzerInterface` et le tag `sf_doctor.analyzer` est ajoute automatiquement
+via autoconfigure :
 ```php
-use SfDoctor\Analyzer\AnalyzerInterface;
-use SfDoctor\Config\ConfigReaderInterface;
-use SfDoctor\Model\AuditReport;
+use PierreArthur\SfDoctor\Analyzer\AnalyzerInterface;
+use PierreArthur\SfDoctor\Config\ConfigReaderInterface;
+use PierreArthur\SfDoctor\Model\AuditReport;
 
 class MonAnalyzer implements AnalyzerInterface
 {
@@ -162,12 +220,12 @@ class MonAnalyzer implements AnalyzerInterface
 }
 ```
 
-Aucune configuration supplementaire necessaire. SF-Doctor detecte et execute automatiquement tous les services qui implementent `AnalyzerInterface`.
+Aucune configuration supplementaire necessaire. SF-Doctor detecte et execute automatiquement
+tous les services qui implementent `AnalyzerInterface`.
 
 ---
 
 ## Tests
-
 ```bash
 # Lancer tous les tests
 vendor/bin/phpunit
@@ -180,17 +238,10 @@ vendor/bin/phpstan analyse src --level=8
 
 ## Roadmap
 
-- **V0.1** (actuelle) - Module Security : firewalls, access_control, commande CLI, rapport console
-- **V0.2** - Module Security complet : CSRF, donnees sensibles, mode debug, remember_me, rapport JSON
-- **V0.3** - Module Architecture : controllers, injection, repositories, voters, services publics
-- **V0.4** - Module Performance : eager loading, cache, Messenger, mode async
-- **V0.5** - Extensibilite : workflow, serializer, configuration avancee, guide de contribution
-
----
-
-## Contribuer
-
-Les contributions sont les bienvenues. Consultez le guide de contribution (a venir) pour savoir comment ajouter un analyzer custom ou ameliorer les analyzers existants.
+- **V0.1** (publiee) - Module Security : firewalls, access_control, commande CLI, rapport console
+- **V0.2** (publiee) - ParameterResolver, CsrfAnalyzer, ControllerAnalyzer, DebugModeAnalyzer, JsonReporter
+- **V0.3** - Ouverture aux contributions : CONTRIBUTING.md, guide pour creer un analyzer custom
+- **V1.0** - Module Upgrade (migration entre versions Symfony), NplusOneAnalyzer, PdfReporter
 
 ---
 
