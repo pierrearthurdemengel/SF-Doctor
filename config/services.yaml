@@ -52,4 +52,5 @@ services:
             $reporters: !tagged_iterator sf_doctor.reporter
             $projectPath: '%kernel.project_dir%'
             $parameterResolver: '@PierreArthur\SfDoctor\Config\ContainerParameterResolver'
+            $dispatcher: '@event_dispatcher'
         tags: ['console.command']

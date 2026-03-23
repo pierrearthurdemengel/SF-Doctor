@@ -3,17 +3,18 @@
 namespace PierreArthur\SfDoctor\Tests\Unit\Command;
 
 use PHPUnit\Framework\TestCase;
-use PierreArthur\SfDoctor\Analyzer\AnalyzerInterface;
-use PierreArthur\SfDoctor\Command\AuditCommand;
-use PierreArthur\SfDoctor\Model\AuditReport;
 use PierreArthur\SfDoctor\Model\Issue;
 use PierreArthur\SfDoctor\Model\Module;
 use PierreArthur\SfDoctor\Model\Severity;
-use PierreArthur\SfDoctor\Report\ReporterInterface;
 use Symfony\Component\Console\Application;
+use PierreArthur\SfDoctor\Model\AuditReport;
 use Symfony\Component\Console\Command\Command;
+use PierreArthur\SfDoctor\Command\AuditCommand;
+use PierreArthur\SfDoctor\Report\ReporterInterface;
 use Symfony\Component\Console\Tester\CommandTester;
+use PierreArthur\SfDoctor\Analyzer\AnalyzerInterface;
 use PierreArthur\SfDoctor\Config\NullParameterResolver;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 
 final class AuditCommandTest extends TestCase
@@ -205,9 +206,20 @@ final class AuditCommandTest extends TestCase
      */
     private function createCommandTester(array $analyzers, array $reporters = []): CommandTester
     {
-        $command = new AuditCommand($analyzers, $reporters, self::PROJECT_PATH, new NullParameterResolver());
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
 
-        // Application is required for CommandTester to resolve the command.
+        // Le dispatcher peut être appelé plusieurs fois, on ne vérifie pas les appels ici.
+        // Les tests d'intégration couvriront le dispatch réel.
+        $dispatcher->method('dispatch')->willReturnArgument(0);
+
+        $command = new AuditCommand(
+            $analyzers,
+            $reporters,
+            self::PROJECT_PATH,
+            new NullParameterResolver(),
+            $dispatcher,
+        );
+
         $application = new Application('SF Doctor', 'test');
         $application->add($command);
 
