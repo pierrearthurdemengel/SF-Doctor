@@ -79,7 +79,7 @@ final class ControllerAnalyzer implements AnalyzerInterface
     public function supports(): bool
     {
         // Verifie que Doctrine ORM est installe.
-        return class_exists(\Doctrine\ORM\EntityManagerInterface::class);
+        return interface_exists(\Doctrine\ORM\EntityManagerInterface::class);
     }
 
     /**
