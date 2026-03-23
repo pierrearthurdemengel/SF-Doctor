@@ -43,7 +43,7 @@ jobs:
       - name: Installation des dependances pour Symfony ${{ matrix.symfony }}
         run: |
           composer require symfony/framework-bundle:${{ matrix.symfony }} --no-update --no-interaction
-          composer install --prefer-dist --no-progress --no-interaction
+          composer update --prefer-dist --no-progress --no-interaction
 
       - name: Analyse statique PHPStan
         run: vendor/bin/phpstan analyse src --level=8 --no-progress
