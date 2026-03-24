@@ -12,6 +12,7 @@ use PierreArthur\SfDoctor\Model\Issue;
 use PierreArthur\SfDoctor\Model\Module;
 use PierreArthur\SfDoctor\Model\Severity;
 use Symfony\Component\Finder\Finder;
+use PierreArthur\SfDoctor\Context\ProjectContext;
 
 /**
  * Detecte les configurations qui desactivent la protection CSRF.
@@ -44,9 +45,9 @@ final class CsrfAnalyzer implements AnalyzerInterface
         return 'CSRF Analyzer';
     }
 
-    public function supports(): bool
+    public function supports(ProjectContext $context): bool
     {
-        return class_exists(\Symfony\Component\Form\AbstractType::class);
+        return $context->hasSecurityBundle();
     }
 
     private function checkGlobalCsrfConfig(AuditReport $report): void

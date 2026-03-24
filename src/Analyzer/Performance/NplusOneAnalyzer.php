@@ -10,6 +10,7 @@ use PierreArthur\SfDoctor\Model\Issue;
 use PierreArthur\SfDoctor\Model\Module;
 use PierreArthur\SfDoctor\Model\Severity;
 use Symfony\Component\Finder\Finder;
+use PierreArthur\SfDoctor\Context\ProjectContext;
 
 /**
  * Detecte les acces potentiels a des relations Doctrine non chargees
@@ -23,9 +24,9 @@ final class NplusOneAnalyzer implements AnalyzerInterface
         private readonly string $projectPath,
     ) {}
 
-    public function supports(): bool
+    public function supports(ProjectContext $context): bool
     {
-        return is_dir($this->projectPath . self::TEMPLATES_DIR);
+        return is_dir($context->getProjectPath() . '/templates');
     }
 
     public function analyze(AuditReport $report): void

@@ -1,38 +1,25 @@
 <?php
 
+// src/Analyzer/AnalyzerInterface.php
+
+declare(strict_types=1);
+
 namespace PierreArthur\SfDoctor\Analyzer;
 
+use PierreArthur\SfDoctor\Context\ProjectContext;
 use PierreArthur\SfDoctor\Model\AuditReport;
-use PierreArthur\SfDoctor\Model\Module;
 
-// Chaque analyzer implémente ce contrat.
 interface AnalyzerInterface
 {
-    /**
-     * pattern "Collecting Parameter" : on passe un objet
-     * que les méthodes remplissent au fur et à mesure.
-     */
     public function analyze(AuditReport $report): void;
 
-    /**
-     * Module auquel appartient cet analyzer.
-     *
-     * Retourne Module::SECURITY, Module::ARCHITECTURE, etc.
-     * Utilisé pour filtrer : quand l'utilisateur lance --security,
-     * on n'exécute que les analyzers dont getModule() retourne SECURITY.
-     */
-    public function getModule(): Module;
-
-    /**
-     * Nom lisible de l'analyzer.
-     */
     public function getName(): string;
 
+    public function getModule(): \PierreArthur\SfDoctor\Model\Module;
+
     /**
-     * Le runner appelle supports() AVANT analyze().
-     * Si supports() retourne false, l'analyzer est ignoré silencieusement.
-     *
-     * Par défaut, la plupart des analyzers retourneront true.
+     * Indique si cet analyzer est applicable au projet audite.
+     * Utilise le ProjectContext pour eviter les class_exists() disperses.
      */
-    public function supports(): bool;
+    public function supports(ProjectContext $context): bool;
 }

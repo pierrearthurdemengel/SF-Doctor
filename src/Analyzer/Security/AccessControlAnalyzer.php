@@ -9,6 +9,7 @@ use PierreArthur\SfDoctor\Model\AuditReport;
 use PierreArthur\SfDoctor\Model\Issue;
 use PierreArthur\SfDoctor\Model\Module;
 use PierreArthur\SfDoctor\Model\Severity;
+use PierreArthur\SfDoctor\Context\ProjectContext;
 
 final class AccessControlAnalyzer implements AnalyzerInterface
 {
@@ -55,9 +56,9 @@ final class AccessControlAnalyzer implements AnalyzerInterface
         return 'Access Control Analyzer';
     }
 
-    public function supports(): bool
+    public function supports(ProjectContext $context): bool
     {
-        return class_exists(\Symfony\Bundle\SecurityBundle\SecurityBundle::class);
+        return $context->hasSecurityBundle();
     }
 
     /**

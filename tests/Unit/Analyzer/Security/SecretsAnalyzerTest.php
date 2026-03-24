@@ -39,6 +39,17 @@ class SecretsAnalyzerTest extends TestCase
         return new AuditReport($this->tmpDir, [Module::SECURITY]);
     }
 
+    private function makeContext(): \PierreArthur\SfDoctor\Context\ProjectContext
+    {
+        return new \PierreArthur\SfDoctor\Context\ProjectContext(
+            projectPath: $this->tmpDir,
+            hasDoctrineOrm: false, hasMessenger: false, hasApiPlatform: false,
+            hasTwig: false, hasSecurityBundle: false, hasWebProfilerBundle: false,
+            hasMailer: false, hasNelmioCors: false, hasNelmioSecurity: false,
+            hasJwtAuth: false, symfonyVersion: null,
+        );
+    }
+
     // --- supports() ---
 
     public function testSupportsReturnsTrueWhenEnvExists(): void
@@ -47,14 +58,14 @@ class SecretsAnalyzerTest extends TestCase
 
         $analyzer = new SecretsAnalyzer($this->tmpDir);
 
-        $this->assertTrue($analyzer->supports());
+        $this->assertTrue($analyzer->supports($this->makeContext()));
     }
 
     public function testSupportsReturnsFalseWhenNoEnvFile(): void
     {
         $analyzer = new SecretsAnalyzer($this->tmpDir);
 
-        $this->assertFalse($analyzer->supports());
+        $this->assertFalse($analyzer->supports($this->makeContext()));
     }
 
     // --- APP_SECRET absent ---

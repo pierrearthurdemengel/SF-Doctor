@@ -29,13 +29,21 @@ final class NplusOneAnalyzerTest extends TestCase
     public function testSupportsReturnsTrueWhenTemplatesDirExists(): void
     {
         $analyzer = new NplusOneAnalyzer($this->tmpDir);
-        $this->assertTrue($analyzer->supports());
+        $this->assertTrue($analyzer->supports($this->makeContext()));
     }
 
     public function testSupportsReturnsFalseWhenTemplatesDirMissing(): void
     {
         $analyzer = new NplusOneAnalyzer($this->tmpDir . '/nonexistent');
-        $this->assertFalse($analyzer->supports());
+        $analyzer2 = new NplusOneAnalyzer($this->tmpDir . '/nonexistent');
+        $ctx = new \PierreArthur\SfDoctor\Context\ProjectContext(
+            projectPath: $this->tmpDir . '/nonexistent',
+            hasDoctrineOrm: false, hasMessenger: false, hasApiPlatform: false,
+            hasTwig: false, hasSecurityBundle: false, hasWebProfilerBundle: false,
+            hasMailer: false, hasNelmioCors: false, hasNelmioSecurity: false,
+            hasJwtAuth: false, symfonyVersion: null,
+        );
+        $this->assertFalse($analyzer2->supports($ctx));
     }
 
     // --- analyze() : cas sans probleme ---
@@ -198,6 +206,17 @@ final class NplusOneAnalyzerTest extends TestCase
         }
 
         rmdir($dir);
+    }
+
+    private function makeContext(): \PierreArthur\SfDoctor\Context\ProjectContext
+    {
+        return new \PierreArthur\SfDoctor\Context\ProjectContext(
+            projectPath: $this->tmpDir,
+            hasDoctrineOrm: false, hasMessenger: false, hasApiPlatform: false,
+            hasTwig: false, hasSecurityBundle: false, hasWebProfilerBundle: false,
+            hasMailer: false, hasNelmioCors: false, hasNelmioSecurity: false,
+            hasJwtAuth: false, symfonyVersion: null,
+        );
     }
 
     // --- Enrichissement des champs ---

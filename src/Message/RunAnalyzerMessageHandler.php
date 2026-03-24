@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace PierreArthur\SfDoctor\Message;
 
 use PierreArthur\SfDoctor\Analyzer\AnalyzerInterface;
+use PierreArthur\SfDoctor\Context\ProjectContextDetector;
 use PierreArthur\SfDoctor\Model\AuditReport;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -30,9 +31,16 @@ final class RunAnalyzerMessageHandler
     public function __invoke(RunAnalyzerMessage $message): AuditReport
     {
         $analyzer = $this->findAnalyzer($message->analyzerClass);
-        $report = new AuditReport($message->projectPath, $message->modules);
+        $report   = new AuditReport($message->projectPath, $message->modules);
 
-        if ($analyzer === null || !$analyzer->supports()) {
+        if ($analyzer === null) {
+            return $report;
+        }
+
+        // Construit le contexte a partir du chemin du projet transmis dans le message.
+        $context = (new ProjectContextDetector($message->projectPath))->detect();
+
+        if (!$analyzer->supports($context)) {
             return $report;
         }
 

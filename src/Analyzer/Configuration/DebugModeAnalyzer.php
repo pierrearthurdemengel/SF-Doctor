@@ -9,6 +9,7 @@ use PierreArthur\SfDoctor\Model\AuditReport;
 use PierreArthur\SfDoctor\Model\Issue;
 use PierreArthur\SfDoctor\Model\Module;
 use PierreArthur\SfDoctor\Model\Severity;
+use PierreArthur\SfDoctor\Context\ProjectContext;
 
 /**
  * Verifie que le projet n'est pas deploye avec APP_DEBUG ou APP_ENV=dev.
@@ -30,10 +31,10 @@ class DebugModeAnalyzer implements AnalyzerInterface
         return Module::SECURITY;
     }
 
-    public function supports(): bool
+    public function supports(ProjectContext $context): bool
     {
-        return file_exists($this->projectPath . '/.env')
-            || file_exists($this->projectPath . '/.env.prod');
+        return file_exists($context->getProjectPath() . '/.env.prod')
+            || file_exists($context->getProjectPath() . '/.env');
     }
 
     public function analyze(AuditReport $report): void

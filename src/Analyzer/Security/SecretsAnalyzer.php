@@ -11,6 +11,8 @@ use PierreArthur\SfDoctor\Model\AuditReport;
 use PierreArthur\SfDoctor\Model\Issue;
 use PierreArthur\SfDoctor\Model\Module;
 use PierreArthur\SfDoctor\Model\Severity;
+use PierreArthur\SfDoctor\Context\ProjectContext;
+
 
 /**
  * Verifie que APP_SECRET est configuré et suffisamment robuste.
@@ -106,10 +108,10 @@ class SecretsAnalyzer implements AnalyzerInterface
         return Module::SECURITY;
     }
 
-    public function supports(): bool
+    public function supports(ProjectContext $context): bool
     {
-        return file_exists($this->projectPath . '/.env.prod')
-            || file_exists($this->projectPath . '/.env');
+        return file_exists($context->getProjectPath() . '/.env.prod')
+            || file_exists($context->getProjectPath() . '/.env');
     }
 
     /**

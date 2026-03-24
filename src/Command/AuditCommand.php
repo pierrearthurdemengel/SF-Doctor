@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace PierreArthur\SfDoctor\Command;
 
+use PierreArthur\SfDoctor\Context\ProjectContextDetector;
 use PierreArthur\SfDoctor\Cache\ResultCacheInterface;
 use PierreArthur\SfDoctor\Config\ParameterResolverInterface;
 use PierreArthur\SfDoctor\Event\AnalysisCompletedEvent;
@@ -70,6 +71,9 @@ final class AuditCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+
+        $projectContext = (new ProjectContextDetector($this->projectPath))->detect();
+
         $io = new SymfonyStyle($input, $output);
         $io->title('SF Doctor — Audit en cours');
 
@@ -137,7 +141,7 @@ final class AuditCommand extends Command
                 $issuesBeforeModule = count($report->getIssues());
 
                 foreach ($analyzers as $analyzer) {
-                    if (!$analyzer->supports()) {
+                    if (!$analyzer->supports($projectContext)) {
                         $io->text(sprintf(
                             '  <comment>⏭</comment>  %s (ignoré — dépendance manquante)',
                             $analyzer->getName(),

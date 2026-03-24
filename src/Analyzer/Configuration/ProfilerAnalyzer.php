@@ -12,6 +12,7 @@ use PierreArthur\SfDoctor\Model\AuditReport;
 use PierreArthur\SfDoctor\Model\Issue;
 use PierreArthur\SfDoctor\Model\Module;
 use PierreArthur\SfDoctor\Model\Severity;
+use PierreArthur\SfDoctor\Context\ProjectContext;
 
 /**
  * Verifie que le profiler Symfony n'est pas activé en dehors de l'environnement dev.
@@ -38,9 +39,9 @@ class ProfilerAnalyzer implements AnalyzerInterface
         return Module::SECURITY;
     }
 
-    public function supports(): bool
+    public function supports(ProjectContext $context): bool
     {
-        return class_exists(\Symfony\Bundle\WebProfilerBundle\WebProfilerBundle::class);
+        return $context->hasWebProfilerBundle();
     }
 
     /**

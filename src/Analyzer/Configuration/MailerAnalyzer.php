@@ -12,6 +12,7 @@ use PierreArthur\SfDoctor\Model\AuditReport;
 use PierreArthur\SfDoctor\Model\Issue;
 use PierreArthur\SfDoctor\Model\Module;
 use PierreArthur\SfDoctor\Model\Severity;
+use PierreArthur\SfDoctor\Context\ProjectContext;
 
 /**
  * Verifie que le transport Mailer n'est pas configuré en mode null en production.
@@ -101,8 +102,8 @@ class MailerAnalyzer implements AnalyzerInterface
         return Module::SECURITY;
     }
 
-    public function supports(): bool
+    public function supports(ProjectContext $context): bool
     {
-        return class_exists(\Symfony\Component\Mailer\Mailer::class);
+        return $context->hasMailer();
     }
 }

@@ -10,6 +10,7 @@ use PierreArthur\SfDoctor\Model\Issue;
 use PierreArthur\SfDoctor\Model\Module;
 use PierreArthur\SfDoctor\Model\Severity;
 use Symfony\Component\Finder\Finder;
+use PierreArthur\SfDoctor\Context\ProjectContext;
 
 /**
  * Detecte le code metier (requetes Doctrine) dans les controllers Symfony.
@@ -71,9 +72,9 @@ final class ControllerAnalyzer implements AnalyzerInterface
         return 'Controller Analyzer';
     }
 
-    public function supports(): bool
+    public function supports(ProjectContext $context): bool
     {
-        return interface_exists(\Doctrine\ORM\EntityManagerInterface::class);
+        return $context->hasDoctrineOrm();
     }
 
     private function checkQueryBuilderUsage(

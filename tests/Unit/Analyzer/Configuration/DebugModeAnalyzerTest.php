@@ -40,19 +40,19 @@ class DebugModeAnalyzerTest extends TestCase
     {
         file_put_contents($this->projectPath . '/.env', 'APP_ENV=prod');
 
-        $this->assertTrue($this->analyzer->supports());
+        $this->assertTrue($this->analyzer->supports($this->makeContext()));
     }
 
     public function testSupportsReturnsTrueWhenEnvProdFileExists(): void
     {
         file_put_contents($this->projectPath . '/.env.prod', 'APP_ENV=prod');
 
-        $this->assertTrue($this->analyzer->supports());
+        $this->assertTrue($this->analyzer->supports($this->makeContext()));
     }
 
     public function testSupportsReturnsFalseWhenNoEnvFileExists(): void
     {
-        $this->assertFalse($this->analyzer->supports());
+        $this->assertFalse($this->analyzer->supports($this->makeContext()));
     }
 
     // --- .env.prod prioritaire sur .env ---
@@ -230,6 +230,17 @@ class DebugModeAnalyzerTest extends TestCase
         $this->assertNotNull($issue->getBusinessImpact());
         $this->assertSame(5, $issue->getEstimatedFixMinutes());
         $this->assertStringContainsString('debug-mode', $issue->getDocUrl() ?? '');
+    }
+
+    private function makeContext(): \PierreArthur\SfDoctor\Context\ProjectContext
+    {
+        return new \PierreArthur\SfDoctor\Context\ProjectContext(
+            projectPath: $this->projectPath,
+            hasDoctrineOrm: false, hasMessenger: false, hasApiPlatform: false,
+            hasTwig: false, hasSecurityBundle: false, hasWebProfilerBundle: false,
+            hasMailer: false, hasNelmioCors: false, hasNelmioSecurity: false,
+            hasJwtAuth: false, symfonyVersion: null,
+        );
     }
 
 }

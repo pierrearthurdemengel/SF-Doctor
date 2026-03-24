@@ -12,6 +12,7 @@ use PierreArthur\SfDoctor\Model\AuditReport;
 use PierreArthur\SfDoctor\Model\Issue;
 use PierreArthur\SfDoctor\Model\Module;
 use PierreArthur\SfDoctor\Model\Severity;
+use PierreArthur\SfDoctor\Context\ProjectContext;
 
 /**
  * Verifie la presence des headers HTTP de securite dans la configuration Symfony.
@@ -47,9 +48,9 @@ class HttpHeadersAnalyzer implements AnalyzerInterface
         return Module::SECURITY;
     }
 
-    public function supports(): bool
+    public function supports(ProjectContext $context): bool
     {
-        return class_exists(\Symfony\Component\HttpKernel\HttpKernel::class);
+        return true;
     }
 
     /**
