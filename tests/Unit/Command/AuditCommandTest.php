@@ -158,6 +158,39 @@ final class AuditCommandTest extends TestCase
         $tester->assertCommandIsSuccessful();
     }
 
+// ---------------------------------------------------------------
+    // 8. Workflow : statut "completed" affiché après une analyse réussie
+    // ---------------------------------------------------------------
+    public function testWorkflowStatusCompletedAppearsOnSuccess(): void
+    {
+        $analyzer = $this->createAnalyzer(Module::SECURITY, []);
+
+        $tester = $this->createCommandTester([$analyzer]);
+        $tester->execute([]);
+
+        $this->assertStringContainsString('completed', $tester->getDisplay());
+    }
+
+    // ---------------------------------------------------------------
+    // 9. Workflow : FAILURE si un analyzer lève une exception
+    // ---------------------------------------------------------------
+    public function testWorkflowTransitionsToFailedOnException(): void
+    {
+        $analyzer = $this->createMock(AnalyzerInterface::class);
+        $analyzer->method('getModule')->willReturn(Module::SECURITY);
+        $analyzer->method('getName')->willReturn('Crashing Analyzer');
+        $analyzer->method('supports')->willReturn(true);
+        $analyzer->method('analyze')->willThrowException(
+            new \RuntimeException('Erreur inattendue dans l\'analyzer.')
+        );
+
+        $tester = $this->createCommandTester([$analyzer]);
+        $tester->execute([], ['capture_stderr_separately' => false]);
+
+        $this->assertSame(Command::FAILURE, $tester->getStatusCode());
+        $this->assertStringContainsString('Erreur inattendue', $tester->getDisplay());
+    }
+
     // ===============================================================
     // HELPERS
     // ===============================================================

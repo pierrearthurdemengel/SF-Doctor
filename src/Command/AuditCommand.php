@@ -24,6 +24,8 @@ use PierreArthur\SfDoctor\Event\AnalysisCompletedEvent;
 use PierreArthur\SfDoctor\EventSubscriber\CacheSubscriber;
 use PierreArthur\SfDoctor\Config\ParameterResolverInterface;
 use PierreArthur\SfDoctor\EventSubscriber\ProgressSubscriber;
+use PierreArthur\SfDoctor\Workflow\AuditContext;
+use PierreArthur\SfDoctor\Workflow\AuditWorkflow;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 
@@ -67,6 +69,10 @@ final class AuditCommand extends Command
 
         $startTime = microtime(true);
 
+        // Initialisation du workflow.
+        $workflow = AuditWorkflow::create();
+        $context  = new AuditContext();
+
         // Enregistrement du ProgressSubscriber avec l'output courant.
         // Le subscriber est créé ici car OutputInterface n'est disponible
         // qu'au moment de l'exécution de la commande, pas au boot du container.
@@ -74,14 +80,14 @@ final class AuditCommand extends Command
         $this->dispatcher->addSubscriber(new CacheSubscriber($this->cache));
 
         // --- Vérification du cache ---
-        $hash = $this->cache->computeHash($this->projectPath);
+        $hash         = $this->cache->computeHash($this->projectPath);
         $cachedReport = $this->cache->load($hash);
 
         if ($cachedReport !== null) {
             $io->text('<comment>Rapport chargé depuis le cache.</comment>');
             $io->newLine();
 
-            $format = $input->getOption('format');
+            $format   = $input->getOption('format');
             $reporter = $this->findReporter($format);
 
             if ($reporter === null) {
@@ -103,16 +109,16 @@ final class AuditCommand extends Command
         ));
         $io->newLine();
 
-        // --- Indexer les analyzers actifs par module ---
-        // On matérialise l'iterable en tableau pour pouvoir compter
-        // et regrouper les analyzers avant de commencer.
         $analyzersByModule = $this->groupAnalyzersByModule($modules);
-        $totalCount = array_sum(array_map('count', $analyzersByModule));
+        $totalCount        = array_sum(array_map('count', $analyzersByModule));
 
         $report = new AuditReport(
             projectPath: $this->projectPath,
             modules: $modules,
         );
+
+        // Transition : pending -> running.
+        $workflow->apply($context, AuditWorkflow::TRANSITION_START);
 
         // --- Démarrage : on notifie les subscribers ---
         $this->dispatcher->dispatch(
@@ -120,46 +126,66 @@ final class AuditCommand extends Command
             AnalysisStartedEvent::NAME,
         );
 
-        // --- Lancer les analyzers module par module ---
-        foreach ($analyzersByModule as $module => $analyzers) {
-            $issuesBeforeModule = count($report->getIssues());
+        try {
+            // --- Lancer les analyzers module par module ---
+            foreach ($analyzersByModule as $module => $analyzers) {
+                $issuesBeforeModule = count($report->getIssues());
 
-            foreach ($analyzers as $analyzer) {
-                if (!$analyzer->supports()) {
-                    $io->text(sprintf(
-                        '  <comment>⏭</comment>  %s (ignoré — dépendance manquante)',
-                        $analyzer->getName(),
-                    ));
-                    continue;
+                foreach ($analyzers as $analyzer) {
+                    if (!$analyzer->supports()) {
+                        $io->text(sprintf(
+                            '  <comment>⏭</comment>  %s (ignoré — dépendance manquante)',
+                            $analyzer->getName(),
+                        ));
+                        continue;
+                    }
+
+                    $issuesBefore = count($report->getIssues());
+                    $io->text(sprintf('  <info>▶</info>  %s...', $analyzer->getName()));
+                    $analyzer->analyze($report);
+
+                    // Dispatcher un IssueFoundEvent pour chaque nouvelle issue.
+                    $newIssues = array_slice($report->getIssues(), $issuesBefore);
+                    foreach ($newIssues as $issue) {
+                        $this->dispatcher->dispatch(
+                            new IssueFoundEvent($issue, $analyzer::class),
+                            IssueFoundEvent::NAME,
+                        );
+                    }
                 }
 
-                $issuesBefore = count($report->getIssues());
-                $io->text(sprintf('  <info>▶</info>  %s...', $analyzer->getName()));
-                $analyzer->analyze($report);
-
-                // Dispatcher un IssueFoundEvent pour chaque nouvelle issue
-                $newIssues = array_slice($report->getIssues(), $issuesBefore);
-                foreach ($newIssues as $issue) {
-                    $this->dispatcher->dispatch(
-                        new IssueFoundEvent($issue, $analyzer::class),
-                        IssueFoundEvent::NAME,
-                    );
-                }
+                // Un module entier est terminé.
+                $issuesFoundInModule = count($report->getIssues()) - $issuesBeforeModule;
+                $this->dispatcher->dispatch(
+                    new ModuleCompletedEvent(Module::from($module), $issuesFoundInModule),
+                    ModuleCompletedEvent::NAME,
+                );
             }
 
-            // Un module entier est terminé
-            $issuesFoundInModule = count($report->getIssues()) - $issuesBeforeModule;
+            $report->complete();
+
+            // Transition : running -> completed.
+            $workflow->apply($context, AuditWorkflow::TRANSITION_COMPLETE);
+            $io->comment(sprintf('Statut workflow : %s', $context->getStatus()));
+
+        } catch (\Throwable $e) {
+            // Transition : running -> failed.
+            $workflow->apply($context, AuditWorkflow::TRANSITION_FAIL);
+            $io->error(sprintf('Erreur inattendue : %s', $e->getMessage()));
+
+            $duration = microtime(true) - $startTime;
             $this->dispatcher->dispatch(
-                new ModuleCompletedEvent(Module::from($module), $issuesFoundInModule),
-                ModuleCompletedEvent::NAME,
+                new AnalysisCompletedEvent($report, $duration),
+                AnalysisCompletedEvent::NAME,
             );
+
+            return Command::FAILURE;
         }
 
-        $report->complete();
         $io->newLine();
 
         // --- Générer le rapport ---
-        $format = $input->getOption('format');
+        $format   = $input->getOption('format');
         $reporter = $this->findReporter($format);
 
         if ($reporter === null) {
@@ -195,7 +221,6 @@ final class AuditCommand extends Command
     {
         $grouped = [];
 
-        // Initialiser les clés dans l'ordre des modules demandés
         foreach ($modules as $module) {
             $grouped[$module->value] = [];
         }
