@@ -4,30 +4,31 @@ declare(strict_types=1);
 
 namespace PierreArthur\SfDoctor\Command;
 
+use PierreArthur\SfDoctor\Cache\ResultCacheInterface;
+use PierreArthur\SfDoctor\Config\ParameterResolverInterface;
+use PierreArthur\SfDoctor\Event\AnalysisCompletedEvent;
+use PierreArthur\SfDoctor\Event\AnalysisStartedEvent;
+use PierreArthur\SfDoctor\Event\IssueFoundEvent;
+use PierreArthur\SfDoctor\Event\ModuleCompletedEvent;
+use PierreArthur\SfDoctor\EventSubscriber\CacheSubscriber;
+use PierreArthur\SfDoctor\EventSubscriber\ProgressSubscriber;
+use PierreArthur\SfDoctor\Message\RunAnalyzerMessage;
+use PierreArthur\SfDoctor\Model\AuditReport;
 use PierreArthur\SfDoctor\Model\Module;
 use PierreArthur\SfDoctor\Model\Severity;
-use PierreArthur\SfDoctor\Cache\ResultCache;
-use PierreArthur\SfDoctor\Model\AuditReport;
-use Symfony\Component\Console\Command\Command;
-use PierreArthur\SfDoctor\Event\IssueFoundEvent;
-use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\Console\Attribute\AsCommand;
 use PierreArthur\SfDoctor\Report\ReporterInterface;
-use Symfony\Component\Console\Input\InputInterface;
-use PierreArthur\SfDoctor\Cache\ResultCacheInterface;
-use PierreArthur\SfDoctor\Analyzer\AnalyzerInterface;
-use PierreArthur\SfDoctor\Event\ModuleCompletedEvent;
-use PierreArthur\SfDoctor\Event\AnalysisStartedEvent;
-use Symfony\Component\Console\Output\OutputInterface;
-use PierreArthur\SfDoctor\Event\AnalysisCompletedEvent;
-use PierreArthur\SfDoctor\EventSubscriber\CacheSubscriber;
-use PierreArthur\SfDoctor\Config\ParameterResolverInterface;
-use PierreArthur\SfDoctor\EventSubscriber\ProgressSubscriber;
 use PierreArthur\SfDoctor\Workflow\AuditContext;
 use PierreArthur\SfDoctor\Workflow\AuditWorkflow;
+use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-
+use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Stamp\HandledStamp;
+use PierreArthur\SfDoctor\Analyzer\AnalyzerInterface;
 
 #[AsCommand(
     name: 'sf-doctor:audit',
@@ -47,6 +48,9 @@ final class AuditCommand extends Command
         private readonly ParameterResolverInterface $parameterResolver,
         private readonly EventDispatcherInterface $dispatcher,
         private readonly ResultCacheInterface $cache,
+        // Optionnel : absent en mode standalone (bin/sf-doctor).
+        // Présent en mode bundle via injection du container Symfony.
+        private readonly ?MessageBusInterface $bus = null,
     ) {
         parent::__construct();
     }
@@ -59,6 +63,7 @@ final class AuditCommand extends Command
             ->addOption('performance', 'p', InputOption::VALUE_NONE, 'Audit performance uniquement')
             ->addOption('all', null, InputOption::VALUE_NONE, 'Tous les modules (défaut si aucun module spécifié)')
             ->addOption('format', 'f', InputOption::VALUE_REQUIRED, 'Format de sortie (console, json)', 'console')
+            ->addOption('async', null, InputOption::VALUE_NONE, 'Exécuter les analyzers via Messenger (nécessite un bus configuré)')
         ;
     }
 
@@ -69,13 +74,9 @@ final class AuditCommand extends Command
 
         $startTime = microtime(true);
 
-        // Initialisation du workflow.
         $workflow = AuditWorkflow::create();
         $context  = new AuditContext();
 
-        // Enregistrement du ProgressSubscriber avec l'output courant.
-        // Le subscriber est créé ici car OutputInterface n'est disponible
-        // qu'au moment de l'exécution de la commande, pas au boot du container.
         $this->dispatcher->addSubscriber(new ProgressSubscriber($output));
         $this->dispatcher->addSubscriber(new CacheSubscriber($this->cache));
 
@@ -117,17 +118,20 @@ final class AuditCommand extends Command
             modules: $modules,
         );
 
-        // Transition : pending -> running.
         $workflow->apply($context, AuditWorkflow::TRANSITION_START);
 
-        // --- Démarrage : on notifie les subscribers ---
         $this->dispatcher->dispatch(
             new AnalysisStartedEvent($this->projectPath, $totalCount),
             AnalysisStartedEvent::NAME,
         );
 
+        $async = $input->getOption('async') && $this->bus !== null;
+
+        if ($input->getOption('async') && $this->bus === null) {
+            $io->warning('Option --async ignorée : aucun bus Messenger disponible.');
+        }
+
         try {
-            // --- Lancer les analyzers module par module ---
             foreach ($analyzersByModule as $module => $analyzers) {
                 $issuesBeforeModule = count($report->getIssues());
 
@@ -142,9 +146,31 @@ final class AuditCommand extends Command
 
                     $issuesBefore = count($report->getIssues());
                     $io->text(sprintf('  <info>▶</info>  %s...', $analyzer->getName()));
-                    $analyzer->analyze($report);
 
-                    // Dispatcher un IssueFoundEvent pour chaque nouvelle issue.
+                    if ($async && $this->bus !== null) {
+                        
+                        // Envoi du message sur le bus.
+                        // Le HandledStamp contient le AuditReport retourné par le handler.
+                        $envelope = $this->bus->dispatch(
+                            new RunAnalyzerMessage($analyzer::class, $this->projectPath, $modules)
+                        );
+
+                        /** @var HandledStamp|null $stamp */
+                        $stamp = $envelope->last(HandledStamp::class);
+
+                        if ($stamp !== null) {
+                            /** @var AuditReport $partialReport */
+                            $partialReport = $stamp->getResult();
+
+                            // Fusion des issues du rapport partiel dans le rapport principal.
+                            foreach ($partialReport->getIssues() as $issue) {
+                                $report->addIssue($issue);
+                            }
+                        }
+                    } else {
+                        $analyzer->analyze($report);
+                    }
+
                     $newIssues = array_slice($report->getIssues(), $issuesBefore);
                     foreach ($newIssues as $issue) {
                         $this->dispatcher->dispatch(
@@ -154,7 +180,6 @@ final class AuditCommand extends Command
                     }
                 }
 
-                // Un module entier est terminé.
                 $issuesFoundInModule = count($report->getIssues()) - $issuesBeforeModule;
                 $this->dispatcher->dispatch(
                     new ModuleCompletedEvent(Module::from($module), $issuesFoundInModule),
@@ -164,12 +189,10 @@ final class AuditCommand extends Command
 
             $report->complete();
 
-            // Transition : running -> completed.
             $workflow->apply($context, AuditWorkflow::TRANSITION_COMPLETE);
             $io->comment(sprintf('Statut workflow : %s', $context->getStatus()));
 
         } catch (\Throwable $e) {
-            // Transition : running -> failed.
             $workflow->apply($context, AuditWorkflow::TRANSITION_FAIL);
             $io->error(sprintf('Erreur inattendue : %s', $e->getMessage()));
 
@@ -184,7 +207,6 @@ final class AuditCommand extends Command
 
         $io->newLine();
 
-        // --- Générer le rapport ---
         $format   = $input->getOption('format');
         $reporter = $this->findReporter($format);
 
@@ -195,7 +217,6 @@ final class AuditCommand extends Command
 
         $reporter->generate($report, $output);
 
-        // --- Fin : on notifie les subscribers avec la durée et le rapport ---
         $duration = microtime(true) - $startTime;
         $this->dispatcher->dispatch(
             new AnalysisCompletedEvent($report, $duration),
@@ -211,9 +232,6 @@ final class AuditCommand extends Command
     }
 
     /**
-     * Regroupe les analyzers actifs par module, sous forme de tableau indexé par module->value.
-     * Les analyzers dont le module n'est pas dans $modules sont ignorés.
-     *
      * @param list<Module> $modules
      * @return array<string, list<AnalyzerInterface>>
      */

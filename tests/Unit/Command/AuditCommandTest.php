@@ -191,6 +191,58 @@ final class AuditCommandTest extends TestCase
         $this->assertStringContainsString('Erreur inattendue', $tester->getDisplay());
     }
 
+    // ---------------------------------------------------------------
+    // 10. --async avec bus : les issues du rapport partiel sont fusionnées
+    // ---------------------------------------------------------------
+    public function testAsyncMergesIssuesFromPartialReports(): void
+    {
+        $issue = new Issue(
+            severity: Severity::WARNING,
+            module: Module::SECURITY,
+            analyzer: 'TestAnalyzer',
+            message: 'Async issue',
+            detail: 'Detected asynchronously.',
+            suggestion: 'Fix it.',
+        );
+
+        $partialReport = new AuditReport('/tmp/fake-project', [Module::SECURITY]);
+        $partialReport->addIssue($issue);
+
+        $stamp    = new \Symfony\Component\Messenger\Stamp\HandledStamp($partialReport, 'handler');
+        $envelope = new \Symfony\Component\Messenger\Envelope(
+            new \PierreArthur\SfDoctor\Message\RunAnalyzerMessage('SomeAnalyzer', '/tmp', []),
+            [$stamp],
+        );
+
+        $bus = $this->createMock(\Symfony\Component\Messenger\MessageBusInterface::class);
+        $bus->method('dispatch')->willReturn($envelope);
+
+        $analyzer = $this->createAnalyzer(Module::SECURITY, []);
+
+        $tester = $this->createCommandTester([$analyzer], null, $bus);
+        $tester->execute(['--async' => true]);
+
+        $tester->assertCommandIsSuccessful();
+        $this->assertStringContainsString('completed', $tester->getDisplay());
+    }
+
+    // ---------------------------------------------------------------
+    // 11. --async sans bus : warning affiché, analyse en mode sync
+    // ---------------------------------------------------------------
+    public function testAsyncWithoutBusShowsWarning(): void
+    {
+        $analyzer = $this->createAnalyzer(Module::SECURITY, []);
+
+        $tester = $this->createCommandTester([$analyzer], null, null);
+        $tester->execute(['--async' => true]);
+
+        $tester->assertCommandIsSuccessful();
+        $this->assertStringContainsString('ignorée', $tester->getDisplay());
+    }
+
+
+
+
     // ===============================================================
     // HELPERS
     // ===============================================================
@@ -220,15 +272,14 @@ final class AuditCommandTest extends TestCase
     }
 
     /**
-     * Builds a CommandTester for AuditCommand with given analyzers and reporters.
-     *
      * @param list<AnalyzerInterface> $analyzers
-     * @param list<ReporterInterface> $reporters
+     * @param list<ReporterInterface>|null $reporters
      */
-    private function createCommandTester(array $analyzers, ?array $reporters = null): CommandTester
-    {
-        // Par defaut, on injecte un ConsoleReporter pour que findReporter('console')
-        // trouve toujours un reporter valide dans les tests.
+    private function createCommandTester(
+        array $analyzers,
+        ?array $reporters = null,
+        ?\Symfony\Component\Messenger\MessageBusInterface $bus = null,
+    ): CommandTester {
         if ($reporters === null) {
             $reporters = [new \PierreArthur\SfDoctor\Report\ConsoleReporter()];
         }
@@ -236,7 +287,6 @@ final class AuditCommandTest extends TestCase
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
         $dispatcher->method('dispatch')->willReturnArgument(0);
 
-        // Le cache retourne null = pas de cache existant, l'analyse tourne normalement.
         $cache = $this->createMock(ResultCacheInterface::class);
         $cache->method('computeHash')->willReturn('fake-hash');
         $cache->method('load')->willReturn(null);
@@ -248,6 +298,7 @@ final class AuditCommandTest extends TestCase
             new NullParameterResolver(),
             $dispatcher,
             $cache,
+            $bus,
         );
 
         $application = new Application('SF Doctor', 'test');
