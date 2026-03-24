@@ -117,3 +117,27 @@ services:
             $normalizer: '@PierreArthur\SfDoctor\Serializer\AuditReportNormalizer'
         tags:
             - { name: 'sf_doctor.reporter' }
+
+    PierreArthur\SfDoctor\Analyzer\Security\SecretsAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: security }
+
+    PierreArthur\SfDoctor\Analyzer\Configuration\ProfilerAnalyzer:
+        autowire: true
+        tags:
+            - { name: sf_doctor.analyzer, module: security }
+
+    PierreArthur\SfDoctor\Analyzer\Configuration\MailerAnalyzer:
+        autowire: true
+        tags:
+            - { name: sf_doctor.analyzer, module: security }
+
+    PierreArthur\SfDoctor\Analyzer\Configuration\HttpHeadersAnalyzer:
+        autowire: true
+        tags:
+            - { name: sf_doctor.analyzer, module: security }
+
+    PierreArthur\SfDoctor\Config\ConfigReaderInterface:
+        alias: PierreArthur\SfDoctor\Config\YamlConfigReader
