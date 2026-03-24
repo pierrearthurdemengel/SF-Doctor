@@ -199,4 +199,30 @@ final class NplusOneAnalyzerTest extends TestCase
 
         rmdir($dir);
     }
+
+    // --- Enrichissement des champs ---
+
+    public function testNplusOneIssueHasEnrichmentFields(): void
+    {
+        $this->writeTwig('index.html.twig', <<<TWIG
+            {% for order in orders %}
+                {{ order.customer.name }}
+            {% endfor %}
+            TWIG
+        );
+
+        $report = $this->runAnalyzer();
+
+        $this->assertCount(1, $report->getIssues());
+
+        $issue = $report->getIssues()[0];
+        $this->assertNotNull($issue->getFixCode());
+        $this->assertNotNull($issue->getDocUrl());
+        $this->assertNotNull($issue->getBusinessImpact());
+        $this->assertSame(20, $issue->getEstimatedFixMinutes());
+        // Le fichier et la ligne sont deja renseignes depuis la V1.0.
+        $this->assertNotNull($issue->getFile());
+        $this->assertNotNull($issue->getLine());
+        $this->assertStringContainsString('customer', $issue->getFixCode() ?? '');
+    }
 }

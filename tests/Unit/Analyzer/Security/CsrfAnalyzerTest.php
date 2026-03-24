@@ -230,6 +230,63 @@ final class CsrfAnalyzerTest extends TestCase
     }
 
     // ---------------------------------------------------------------
+    // 4. Enrichissement des champs
+    // ---------------------------------------------------------------
+
+    public function testGlobalCsrfIssueHasEnrichmentFields(): void
+    {
+        $analyzer = $this->createAnalyzer([
+            'framework' => [
+                'form' => ['csrf_protection' => false],
+            ],
+        ]);
+
+        $report = $this->createReport();
+        $analyzer->analyze($report);
+
+        $criticals = $report->getIssuesBySeverity(Severity::CRITICAL);
+        $this->assertCount(1, $criticals);
+
+        $issue = $criticals[0];
+        $this->assertNotNull($issue->getFixCode());
+        $this->assertNotNull($issue->getDocUrl());
+        $this->assertNotNull($issue->getBusinessImpact());
+        $this->assertSame(10, $issue->getEstimatedFixMinutes());
+        $this->assertStringContainsString('csrf.html', $issue->getDocUrl() ?? '');
+    }
+
+    public function testFormTypeCsrfIssueHasEnrichmentFields(): void
+    {
+        $projectPath = $this->createTempProjectWithFormType(
+            <<<'PHP'
+            <?php
+            class TestType extends AbstractType {
+                public function configureOptions(OptionsResolver $resolver): void {
+                    $resolver->setDefaults(['csrf_protection' => false]);
+                }
+            }
+            PHP,
+        );
+
+        $analyzer = $this->createAnalyzer(null, $projectPath);
+
+        $report = $this->createReport();
+        $analyzer->analyze($report);
+
+        $warnings = $report->getIssuesBySeverity(Severity::WARNING);
+        $this->assertCount(1, $warnings);
+
+        $issue = $warnings[0];
+        $this->assertNotNull($issue->getFixCode());
+        $this->assertNotNull($issue->getDocUrl());
+        $this->assertNotNull($issue->getBusinessImpact());
+        $this->assertSame(5, $issue->getEstimatedFixMinutes());
+
+        $this->cleanTempProject($projectPath);
+    }
+
+
+    // ---------------------------------------------------------------
     // Helpers filesystem
     // ---------------------------------------------------------------
 

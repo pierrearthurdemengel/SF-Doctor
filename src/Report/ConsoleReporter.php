@@ -14,20 +14,31 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 final class ConsoleReporter implements ReporterInterface
 {
-    public function generate(AuditReport $report, OutputInterface $output): void
+    /**
+     * @param array<string, mixed> $context
+     */
+    public function generate(AuditReport $report, OutputInterface $output, array $context = []): void
     {
         // SymfonyStyle est construit ici car OutputInterface n'est disponible
         // qu'au moment de l'execution, pas au boot du container.
         $io = new SymfonyStyle(new ArrayInput([]), $output);
 
+        // En mode brief, seuls le tableau des issues (message + fichier) et le score sont affiches.
+        // Les champs d'enrichissement (fixCode, docUrl, businessImpact) sont omis.
+        $brief = (bool) ($context['brief'] ?? false);
+
         $io->title('SF Doctor — Rapport d\'audit');
         $this->printSummary($report, $io);
 
         foreach ($report->getModules() as $module) {
-            $this->printModule($report, $module, $io);
+            $this->printModule($report, $module, $io, $brief);
         }
 
         $this->printScore($report, $io);
+
+        if (!$brief) {
+            $this->printTotalEstimatedTime($report, $io);
+        }
     }
 
     public function getFormat(): string
@@ -49,7 +60,7 @@ final class ConsoleReporter implements ReporterInterface
         ]);
     }
 
-    private function printModule(AuditReport $report, Module $module, SymfonyStyle $io): void
+    private function printModule(AuditReport $report, Module $module, SymfonyStyle $io, bool $brief): void
     {
         $issues = $report->getIssuesByModule($module);
 
@@ -78,12 +89,42 @@ final class ConsoleReporter implements ReporterInterface
             ),
         );
 
+        // En mode brief, on s'arrete apres le tableau.
+        if ($brief) {
+            return;
+        }
+
         foreach ($issues as $issue) {
             if ($issue->getSeverity() === Severity::OK) {
                 continue;
             }
 
-            $io->text(sprintf('  <comment>→</comment> %s', $issue->getSuggestion()));
+            $this->printIssueDetail($issue, $io);
+        }
+    }
+
+    private function printIssueDetail(Issue $issue, SymfonyStyle $io): void
+    {
+        $io->text(sprintf('  <comment>→</comment> %s', $issue->getSuggestion()));
+
+        if ($issue->getBusinessImpact() !== null) {
+            $io->text(sprintf('  <fg=white;options=underscore>Impact : %s</>', $issue->getBusinessImpact()));
+        }
+
+        if ($issue->getFixCode() !== null) {
+            $io->text('  <fg=cyan>Fix :</>');
+            // Chaque ligne du snippet est indentee et coloree pour se demarquer du texte courant.
+            foreach (explode("\n", $issue->getFixCode()) as $codeLine) {
+                $io->text(sprintf('  <fg=cyan>%s</>', $codeLine));
+            }
+        }
+
+        if ($issue->getDocUrl() !== null) {
+            $io->text(sprintf('  <href=%s>Documentation : %s</>', $issue->getDocUrl(), $issue->getDocUrl()));
+        }
+
+        if ($issue->getEstimatedFixMinutes() !== null) {
+            $io->text(sprintf('  <fg=white>Temps estimé : %d min</>', $issue->getEstimatedFixMinutes()));
         }
     }
 
@@ -99,6 +140,25 @@ final class ConsoleReporter implements ReporterInterface
         } else {
             $io->error(sprintf('Score : %d/100', $score));
         }
+    }
+
+    private function printTotalEstimatedTime(AuditReport $report, SymfonyStyle $io): void
+    {
+        // Somme uniquement les issues dont le temps estime est renseigne.
+        $total = array_sum(array_filter(array_map(
+            fn (Issue $issue): ?int => $issue->getEstimatedFixMinutes(),
+            $report->getIssues(),
+        )));
+
+        // Si aucune issue n'a de temps estime, on n'affiche pas la ligne.
+        if ($total === 0) {
+            return;
+        }
+
+        $io->text(sprintf(
+            '<fg=white>Temps total de correction estimé : ~%d min</> ',
+            $total,
+        ));
     }
 
     private function formatSeverity(Severity $severity): string

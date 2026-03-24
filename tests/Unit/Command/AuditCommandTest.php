@@ -240,7 +240,40 @@ final class AuditCommandTest extends TestCase
         $this->assertStringContainsString('ignorée', $tester->getDisplay());
     }
 
+    // ---------------------------------------------------------------
+    // 12. --brief : les champs d'enrichissement ne sont pas affichés
+    // ---------------------------------------------------------------
+    public function testBriefOptionHidesEnrichmentFields(): void
+    {
+        $issue = new Issue(
+            severity: Severity::WARNING,
+            module: Module::SECURITY,
+            analyzer: 'TestAnalyzer',
+            message: 'Firewall sans authentification',
+            detail: 'Aucun authenticator configuré.',
+            suggestion: 'Ajouter form_login.',
+            businessImpact: 'Impact confidentiel qui ne doit pas apparaître.',
+            fixCode: 'fix_code_qui_ne_doit_pas_apparaitre',
+            docUrl: 'https://symfony.com/secret',
+            estimatedFixMinutes: 99,
+        );
 
+        $analyzer = $this->createAnalyzer(Module::SECURITY, [$issue]);
+
+        $tester = $this->createCommandTester([$analyzer]);
+        $tester->execute(['--brief' => true]);
+
+        $display = $tester->getDisplay();
+
+        // Le message principal reste visible
+        $this->assertStringContainsString('Firewall sans authentification', $display);
+
+        // Les champs d'enrichissement sont absents
+        $this->assertStringNotContainsString('Impact confidentiel', $display);
+        $this->assertStringNotContainsString('fix_code_qui_ne_doit_pas_apparaitre', $display);
+        $this->assertStringNotContainsString('https://symfony.com/secret', $display);
+        $this->assertStringNotContainsString('99', $display);
+    }
 
 
     // ===============================================================

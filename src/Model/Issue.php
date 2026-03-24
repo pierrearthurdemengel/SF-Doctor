@@ -8,30 +8,31 @@ namespace PierreArthur\SfDoctor\Model;
 // explicitement conçue pour être étendue devrait être final.
 final class Issue
 {
-    // Ceci est un "constructeur promu" (promoted constructor) — PHP 8.0
-    // Combiné avec "readonly" — PHP 8.1
     public function __construct(
-        // "private" → accessible uniquement depuis cette classe
-        // "readonly" → une fois définie, la valeur ne peut plus changer
-        // "Severity" → le type (enum)
-        // "$severity" → le nom de la propriété
         private readonly Severity $severity,
         private readonly Module $module,
         private readonly string $analyzer,
         private readonly string $message,
         private readonly string $detail,
         private readonly string $suggestion,
-
-        // Le "?" = "nullable" : cette valeur peut être null.
-        // Un issue ne concerne pas toujours un fichier précis
-        // (ex: "aucun fichier security.yaml trouvé" → pas de fichier à pointer).
-        // "= null" → valeur par défaut si on ne passe rien.
         private readonly ?string $file = null,
         private readonly ?int $line = null,
-    ) {}
 
-    // Getters : la seule façon de lire les valeurs depuis l'extérieur.
-    // Les propriétés sont "private", donc on passe par des méthodes.
+        // Extrait de code à appliquer pour corriger le problème.
+        // Null si la correction n'est pas automatisable ou trop contextuelle.
+        private readonly ?string $fixCode = null,
+
+        // URL vers la documentation officielle Symfony décrivant la bonne pratique.
+        private readonly ?string $docUrl = null,
+
+        // Description de l'impact métier en langage non-technique.
+        // Destinée aux rapports partagés avec des non-développeurs.
+        private readonly ?string $businessImpact = null,
+
+        // Estimation du temps nécessaire pour corriger ce problème, en minutes.
+        // Null si l'estimation n'est pas applicable.
+        private readonly ?int $estimatedFixMinutes = null,
+    ) {}
 
     public function getSeverity(): Severity
     {
@@ -71,5 +72,25 @@ final class Issue
     public function getLine(): ?int
     {
         return $this->line;
+    }
+
+    public function getFixCode(): ?string
+    {
+        return $this->fixCode;
+    }
+
+    public function getDocUrl(): ?string
+    {
+        return $this->docUrl;
+    }
+
+    public function getBusinessImpact(): ?string
+    {
+        return $this->businessImpact;
+    }
+
+    public function getEstimatedFixMinutes(): ?int
+    {
+        return $this->estimatedFixMinutes;
     }
 }

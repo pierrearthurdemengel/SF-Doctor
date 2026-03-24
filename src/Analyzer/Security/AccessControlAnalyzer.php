@@ -12,8 +12,6 @@ use PierreArthur\SfDoctor\Model\Severity;
 
 final class AccessControlAnalyzer implements AnalyzerInterface
 {
-    // Même injection que le FirewallAnalyzer :
-    // on dépend du contrat, pas de l'implémentation.
     public function __construct(
         private readonly ConfigReaderInterface $configReader,
         private readonly ParameterResolverInterface $parameterResolver,
@@ -23,38 +21,27 @@ final class AccessControlAnalyzer implements AnalyzerInterface
     {
         $security = $this->configReader->read('config/packages/security.yaml');
 
-        // Pas de fichier security.yaml → rien à analyser.
-        // Le FirewallAnalyzer a déjà émis un WARNING pour ça.
-        // On ne duplique pas l'alerte.
         if ($security === null) {
             return;
         }
 
-        // Resoudre les parametres Symfony (%param%) avant l'analyse.
         $security = $this->parameterResolver->resolveArray($security);
 
         $accessControl = $security['security']['access_control'] ?? [];
 
-        // Si access_control est vide, le FirewallAnalyzer s'en occupe déjà.
-        // On analyse la QUALITÉ des règles quand elles existent.
         if (empty($accessControl)) {
             return;
         }
 
-        // On inspecte chaque règle, une par une.
         foreach ($accessControl as $index => $rule) {
             if (!is_array($rule)) {
                 continue;
             }
 
-            // Check 1 : Utilisation de rôles dépréciés
             $this->checkDeprecatedRoles($report, $rule, $index);
         }
 
-        // Check 2 : Règle "attrape-tout" mal placée (pas en dernière position)
         $this->checkCatchAllOrder($report, $accessControl);
-
-        // Check 3 : Les chemins sensibles sont-ils protégés ?
         $this->checkSensitivePaths($report, $accessControl);
     }
 
@@ -73,14 +60,7 @@ final class AccessControlAnalyzer implements AnalyzerInterface
         return class_exists(\Symfony\Bundle\SecurityBundle\SecurityBundle::class);
     }
 
-    // --- Checks privés ---
-
     /**
-     * Détecte les rôles dépréciés dans les règles access_control.
-     *
-     * IS_AUTHENTICATED_ANONYMOUSLY a été remplacé par PUBLIC_ACCESS en Symfony 6.
-     * Les projets migrés oublient souvent de mettre à jour cette valeur.
-     *
      * @param array<mixed> $rule
      */
     private function checkDeprecatedRoles(AuditReport $report, array $rule, int $index): void
@@ -89,9 +69,6 @@ final class AccessControlAnalyzer implements AnalyzerInterface
             return;
         }
 
-        // Normaliser en tableau : "roles" peut être une string ou un array.
-        // En YAML, "roles: ROLE_ADMIN" donne une string,
-        // "roles: [ROLE_ADMIN, ROLE_USER]" donne un array.
         $roles = is_array($rule['roles']) ? $rule['roles'] : [$rule['roles']];
         $path = $rule['path'] ?? '(non défini)';
 
@@ -100,8 +77,6 @@ final class AccessControlAnalyzer implements AnalyzerInterface
                 continue;
             }
 
-            // IS_AUTHENTICATED_ANONYMOUSLY est déprécié depuis Symfony 5.4.
-            // Remplacé par PUBLIC_ACCESS.
             if ($role === 'IS_AUTHENTICATED_ANONYMOUSLY') {
                 $report->addIssue(new Issue(
                     severity: Severity::WARNING,
@@ -111,10 +86,14 @@ final class AccessControlAnalyzer implements AnalyzerInterface
                     detail: "Ce rôle est déprécié depuis Symfony 5.4 et sera supprimé dans une future version.",
                     suggestion: "Remplacer par PUBLIC_ACCESS.",
                     file: 'config/packages/security.yaml',
+                    fixCode: "# Remplacer dans security.yaml :\n- { path: {$path}, roles: PUBLIC_ACCESS }",
+                    docUrl: 'https://symfony.com/doc/current/security/access_control.html#access-control-public-access',
+                    businessImpact: 'Aucun impact immédiat, mais ce rôle sera supprimé dans une future version de Symfony. '
+                        . 'La mise à jour vers Symfony 7+ cassera cette configuration.',
+                    estimatedFixMinutes: 5,
                 ));
             }
 
-            // ROLE_ANONYMOUS n'existe plus depuis Symfony 6.0
             if ($role === 'ROLE_ANONYMOUS') {
                 $report->addIssue(new Issue(
                     severity: Severity::WARNING,
@@ -124,25 +103,23 @@ final class AccessControlAnalyzer implements AnalyzerInterface
                     detail: "Ce rôle n'existe plus depuis Symfony 6.0.",
                     suggestion: "Remplacer par PUBLIC_ACCESS ou IS_AUTHENTICATED.",
                     file: 'config/packages/security.yaml',
+                    fixCode: "# Remplacer dans security.yaml :\n- { path: {$path}, roles: PUBLIC_ACCESS }",
+                    docUrl: 'https://symfony.com/doc/current/security/access_control.html#access-control-public-access',
+                    businessImpact: 'Cette règle ne fonctionne plus depuis Symfony 6.0. '
+                        . 'Le comportement de sécurité de ce chemin est indéfini.',
+                    estimatedFixMinutes: 5,
                 ));
             }
         }
     }
 
     /**
-     * Vérifie qu'une règle "attrape-tout" (^/) n'est pas placée avant des règles plus spécifiques.
-     *
-     * En Symfony, les règles access_control sont évaluées DANS L'ORDRE.
-     * La première qui matche l'URL gagne. Si une règle ^/ (qui matche tout)
-     * est en position 0, les règles suivantes ne seront JAMAIS atteintes.
-     *
      * @param list<mixed> $accessControl
      */
     private function checkCatchAllOrder(AuditReport $report, array $accessControl): void
     {
         $totalRules = count($accessControl);
 
-        // Moins de 2 règles → pas de problème d'ordre possible.
         if ($totalRules < 2) {
             return;
         }
@@ -153,13 +130,8 @@ final class AccessControlAnalyzer implements AnalyzerInterface
             }
 
             $path = $rule['path'];
-
-            // Détecter les patterns "attrape-tout" : ^/ ou ^.* ou aucun path.
-            // ^/ matche littéralement TOUTES les URLs (elles commencent toutes par /).
             $isCatchAll = ($path === '^/' || $path === '^.*' || $path === '/');
 
-            // Si c'est un attrape-tout ET qu'il n'est PAS en dernière position
-            // les règles qui suivent sont mortes (jamais atteintes).
             if ($isCatchAll && $index < $totalRules - 1) {
                 $report->addIssue(new Issue(
                     severity: Severity::CRITICAL,
@@ -174,32 +146,25 @@ final class AccessControlAnalyzer implements AnalyzerInterface
                     suggestion: "Déplacer cette règle en DERNIÈRE position, "
                         . "après toutes les règles spécifiques.",
                     file: 'config/packages/security.yaml',
+                    fixCode: "# Déplacer la règle '{$path}' en dernière position :\nsecurity:\n    access_control:\n        # ... règles spécifiques d'abord ...\n        - { path: {$path}, roles: ROLE_USER }",
+                    docUrl: 'https://symfony.com/doc/current/security/access_control.html#matching-order',
+                    businessImpact: 'Les règles de sécurité placées après la règle attrape-tout ne sont jamais évaluées. '
+                        . 'Des routes censées être restreintes à ROLE_ADMIN peuvent être accessibles à tout utilisateur connecté.',
+                    estimatedFixMinutes: 10,
                 ));
             }
         }
     }
 
     /**
-     * Vérifie que les chemins sensibles courants sont couverts par une règle access_control.
-     *
-     * On cherche si /admin et /api sont protégés. Ce sont les cibles
-     * les plus courantes d'accès non autorisé.
-     *
      * @param list<mixed> $accessControl
      */
     private function checkSensitivePaths(AuditReport $report, array $accessControl): void
     {
-
-        // Si des parametres non resolus sont presents, on ne peut pas determiner
-        // avec certitude quels chemins sont couverts. On suspend les suggestions
-        // pour eviter les faux positifs.
         if ($this->hasUnresolvedParameters($accessControl)) {
             return;
         }
 
-        // Liste des chemins sensibles courants dans un projet Symfony.
-        // Pour chaque chemin, on vérifie qu'au moins une règle access_control
-        // le couvre (son pattern matche le chemin).
         $sensitivePaths = [
             '/admin' => 'la section administration',
             '/api' => "les endpoints d'API",
@@ -219,17 +184,17 @@ final class AccessControlAnalyzer implements AnalyzerInterface
                     suggestion: "Ajouter une règle : - { path: ^{$path}, roles: ROLE_ADMIN }. "
                         . "Ignorez cette suggestion si ce chemin n'existe pas dans votre projet.",
                     file: 'config/packages/security.yaml',
+                    fixCode: "security:\n    access_control:\n        - { path: ^{$path}, roles: ROLE_ADMIN }",
+                    docUrl: 'https://symfony.com/doc/current/security/access_control.html',
+                    businessImpact: "Si le chemin {$path} existe et n'est pas protégé, "
+                        . "n'importe quel utilisateur peut y accéder sans restriction.",
+                    estimatedFixMinutes: 10,
                 ));
             }
         }
     }
 
     /**
-     * Vérifie si un chemin est couvert par au moins une règle access_control.
-     *
-     * On regarde si le pattern regex de la règle matche le chemin donné.
-     * Les patterns access_control sont des regex (ex: ^/admin).
-     *
      * @param list<mixed> $accessControl
      */
     private function isPathCovered(string $path, array $accessControl): bool
@@ -241,15 +206,6 @@ final class AccessControlAnalyzer implements AnalyzerInterface
 
             $pattern = $rule['path'];
 
-            // Les patterns access_control sont des regex.
-            // On les teste avec preg_match.
-            // Le "#" est le délimiteur (au lieu du classique "/")
-            // pour éviter d'échapper les "/" dans les paths.
-            //
-            // preg_match retourne 1 si le pattern matche, 0 sinon,
-            // et false en cas d'erreur (pattern invalide).
-            // Le @ supprime les warnings en cas de regex invalide
-            // (on ne veut pas crasher sur une config mal écrite par l'utilisateur).
             if (@preg_match('#' . $pattern . '#', $path) === 1) {
                 return true;
             }
@@ -259,12 +215,6 @@ final class AccessControlAnalyzer implements AnalyzerInterface
     }
 
     /**
-     * Verifie si au moins une regle contient un parametre Symfony non resolu.
-     *
-     * En mode standalone, les parametres %param% ne sont pas resolus.
-     * On ne peut pas determiner ce que couvre une regle comme %sylius.security.admin_regex%.
-     * Dans ce cas, emettre une suggestion serait un faux positif.
-     *
      * @param list<mixed> $accessControl
      */
     private function hasUnresolvedParameters(array $accessControl): bool
@@ -281,5 +231,4 @@ final class AccessControlAnalyzer implements AnalyzerInterface
 
         return false;
     }
-
 }

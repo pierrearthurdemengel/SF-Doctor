@@ -19,16 +19,11 @@ use Symfony\Component\Finder\Finder;
  */
 final class ControllerAnalyzer implements AnalyzerInterface
 {
-    // Patterns indiquant une construction de requete directe dans un controller.
-    // Leur presence est une violation d'architecture (CRITICAL).
     private const QUERY_PATTERNS = [
         'createQueryBuilder(' => 'construction de QueryBuilder',
         'createQuery('        => 'requete DQL directe',
     ];
 
-    // Methodes de l'EntityManager acceptables dans un controller.
-    // persist, flush, remove et find sont des operations de cycle de vie,
-    // pas des requetes metier. On les tolere.
     private const ALLOWED_EM_METHODS = [
         'persist',
         'flush',
@@ -78,13 +73,9 @@ final class ControllerAnalyzer implements AnalyzerInterface
 
     public function supports(): bool
     {
-        // Verifie que Doctrine ORM est installe.
         return interface_exists(\Doctrine\ORM\EntityManagerInterface::class);
     }
 
-    /**
-     * Detecte les constructions de QueryBuilder et requetes DQL dans un controller.
-     */
     private function checkQueryBuilderUsage(
         AuditReport $report,
         string $content,
@@ -109,26 +100,22 @@ final class ControllerAnalyzer implements AnalyzerInterface
                     . "(ex: UserRepository::findActiveUsers()) "
                     . "et injecter le Repository dans le controller.",
                 file: $relativePath,
+                fixCode: "// Dans src/Repository/UserRepository.php :\npublic function findActiveUsers(): array\n{\n    return \$this->createQueryBuilder('u')\n        ->where('u.active = true')\n        ->getQuery()\n        ->getResult();\n}\n\n// Dans le controller, injecter le repository :\npublic function __construct(\n    private readonly UserRepository \$userRepository,\n) {}",
+                docUrl: 'https://symfony.com/doc/current/doctrine.html#querying-for-objects-the-repository',
+                businessImpact: 'La logique metier dans les controllers est impossible a reutiliser '
+                    . 'et difficile a tester unitairement. Elle se duplique inevitablement '
+                    . 'dans d\'autres controllers, creant de la dette technique.',
+                estimatedFixMinutes: 30,
             ));
         }
     }
 
-    /**
-     * Detecte les usages de l'EntityManager non-acceptables dans un controller.
-     *
-     * Les appels persist/flush/remove/find sont toleres car ils font partie
-     * du cycle de vie des entites. En revanche, utiliser l'EntityManager
-     * pour construire des requetes indique que de la logique metier
-     * a ete placee dans le mauvais endroit.
-     */
     private function checkEntityManagerUsage(
         AuditReport $report,
         string $content,
         string $filename,
         string $relativePath,
     ): void {
-        // Detecte les appels ->methode() sur une variable $entityManager ou $em.
-        // Le pattern capture le nom de la methode appelee.
         preg_match_all(
             '/(?:\$this->|\$)(?:entityManager|em|doctrine)\s*->\s*([a-zA-Z]+)\s*\(/',
             $content,
@@ -139,7 +126,6 @@ final class ControllerAnalyzer implements AnalyzerInterface
             return;
         }
 
-        // Filtre les methodes non-acceptables.
         $problematicMethods = array_filter(
             $matches[1],
             fn (string $method): bool => !in_array($method, self::ALLOWED_EM_METHODS, true),
@@ -162,6 +148,12 @@ final class ControllerAnalyzer implements AnalyzerInterface
             suggestion: "Deplacer la logique de requete dans un Repository dedie. "
                 . "Injecter le Repository directement plutot que l'EntityManager.",
             file: $relativePath,
+            fixCode: "// Creer un Repository dedie :\nclass UserRepository extends ServiceEntityRepository\n{\n    public function findByCustomCriteria(): array\n    {\n        // Logique de requete ici\n    }\n}\n\n// Dans le controller :\npublic function __construct(\n    private readonly UserRepository \$userRepository,\n) {}",
+            docUrl: 'https://symfony.com/doc/current/doctrine.html#creating-a-repository-class',
+            businessImpact: 'Un controller qui manipule l\'EntityManager directement '
+                . 'melange les responsabilites. Les tests d\'integration sont plus lents '
+                . 'et la logique metier n\'est pas reutilisable depuis d\'autres services.',
+            estimatedFixMinutes: 20,
         ));
     }
 }

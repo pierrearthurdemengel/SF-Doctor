@@ -18,18 +18,22 @@ final class IssueNormalizer implements NormalizerInterface
      * @return array<string, mixed>
      */
     public function normalize(mixed $object, ?string $format = null, array $context = []): array
-        {
-            return [
-                'severity'   => strtolower($object->getSeverity()->name),
-                'module'     => strtolower($object->getModule()->name),
-                'analyzer'   => $object->getAnalyzer(),
-                'message'    => $object->getMessage(),
-                'detail'     => $object->getDetail(),
-                'suggestion' => $object->getSuggestion(),
-                'file'       => $object->getFile(),
-                'line'       => $object->getLine(),
-            ];
-        }
+    {
+        return [
+            'severity'               => strtolower($object->getSeverity()->name),
+            'module'                 => strtolower($object->getModule()->name),
+            'analyzer'               => $object->getAnalyzer(),
+            'message'                => $object->getMessage(),
+            'detail'                 => $object->getDetail(),
+            'suggestion'             => $object->getSuggestion(),
+            'file'                   => $object->getFile(),
+            'line'                   => $object->getLine(),
+            'fix_code'               => $object->getFixCode(),
+            'doc_url'                => $object->getDocUrl(),
+            'business_impact'        => $object->getBusinessImpact(),
+            'estimated_fix_minutes'  => $object->getEstimatedFixMinutes(),
+        ];
+    }
 
     // Indique au Serializer que ce normalizer prend en charge uniquement les objets Issue.
     public function supportsNormalization(mixed $data, ?string $format = null, array $context = []): bool

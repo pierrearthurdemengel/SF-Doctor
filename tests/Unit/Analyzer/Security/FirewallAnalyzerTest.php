@@ -274,4 +274,68 @@ class FirewallAnalyzerTest extends TestCase
 
         $this->assertSame('Firewall Analyzer', $analyzer->getName());
     }
+
+    // =============================================
+    // Test 9 : Enrichissement de l'issue CRITICAL (access_control manquant)
+    // =============================================
+
+    public function testAccessControlIssueHasEnrichmentFields(): void
+    {
+        $analyzer = $this->createAnalyzer([
+            'security' => [
+                'firewalls' => [
+                    'main' => [
+                        'form_login' => ['login_path' => '/login'],
+                    ],
+                ],
+                // Pas d'access_control
+            ],
+        ]);
+        $report = $this->createReport();
+
+        $analyzer->analyze($report);
+
+        $criticals = $report->getIssuesBySeverity(Severity::CRITICAL);
+        $this->assertCount(1, $criticals);
+
+        $issue = $criticals[0];
+        $this->assertNotNull($issue->getFixCode());
+        $this->assertNotNull($issue->getDocUrl());
+        $this->assertNotNull($issue->getBusinessImpact());
+        $this->assertNotNull($issue->getEstimatedFixMinutes());
+        $this->assertStringContainsString('access_control.html', $issue->getDocUrl() ?? '');
+    }
+
+    // =============================================
+    // Test 10 : Enrichissement de l'issue WARNING (authenticator manquant)
+    // =============================================
+
+    public function testAuthenticatorIssueHasEnrichmentFields(): void
+    {
+        $analyzer = $this->createAnalyzer([
+            'security' => [
+                'firewalls' => [
+                    'main' => [
+                        // Pas d'authenticator
+                    ],
+                ],
+                'access_control' => [
+                    ['path' => '^/admin', 'roles' => 'ROLE_ADMIN'],
+                ],
+            ],
+        ]);
+        $report = $this->createReport();
+
+        $analyzer->analyze($report);
+
+        $warnings = $report->getIssuesBySeverity(Severity::WARNING);
+        $this->assertCount(1, $warnings);
+
+        $issue = $warnings[0];
+        $this->assertNotNull($issue->getFixCode());
+        $this->assertNotNull($issue->getDocUrl());
+        $this->assertNotNull($issue->getBusinessImpact());
+        $this->assertNotNull($issue->getEstimatedFixMinutes());
+        $this->assertStringContainsString('form-login', $issue->getDocUrl() ?? '');
+    }
 }

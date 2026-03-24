@@ -20,7 +20,10 @@ final class PdfReporter implements ReporterInterface
     {
     }
 
-    public function generate(AuditReport $report, OutputInterface $output): void
+    /**
+     * @param array<string, mixed> $context
+     */
+    public function generate(AuditReport $report, OutputInterface $output, array $context = []): void
     {
         $options = new Options();
         // Necessaire pour que Dompdf charge les polices systeme.

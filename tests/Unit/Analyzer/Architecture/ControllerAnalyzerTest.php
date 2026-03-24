@@ -220,4 +220,66 @@ final class ControllerAnalyzerTest extends TestCase
     {
         $this->assertSame('Controller Analyzer', $this->createAnalyzer('/fake')->getName());
     }
+
+    // ---------------------------------------------------------------
+    // 8. Enrichissement des champs
+    // ---------------------------------------------------------------
+
+    public function testQueryBuilderIssueHasEnrichmentFields(): void
+    {
+        $projectPath = $this->createTempProjectWithController(<<<'PHP'
+            <?php
+            class TestController {
+                public function index(): void {
+                    $qb = $this->entityManager->createQueryBuilder();
+                }
+            }
+            PHP,
+        );
+
+        $analyzer = $this->createAnalyzer($projectPath);
+        $report = $this->createReport();
+        $analyzer->analyze($report);
+
+        $criticals = $report->getIssuesBySeverity(Severity::CRITICAL);
+        $this->assertCount(1, $criticals);
+
+        $issue = $criticals[0];
+        $this->assertNotNull($issue->getFixCode());
+        $this->assertNotNull($issue->getDocUrl());
+        $this->assertNotNull($issue->getBusinessImpact());
+        $this->assertSame(30, $issue->getEstimatedFixMinutes());
+        $this->assertStringContainsString('repository', $issue->getDocUrl() ?? '');
+
+        $this->cleanTempProject($projectPath);
+    }
+
+    public function testEntityManagerIssueHasEnrichmentFields(): void
+    {
+        $projectPath = $this->createTempProjectWithController(<<<'PHP'
+            <?php
+            class TestController {
+                public function index(): void {
+                    $conn = $this->entityManager->getConnection();
+                }
+            }
+            PHP,
+        );
+
+        $analyzer = $this->createAnalyzer($projectPath);
+        $report = $this->createReport();
+        $analyzer->analyze($report);
+
+        $warnings = $report->getIssuesBySeverity(Severity::WARNING);
+        $this->assertCount(1, $warnings);
+
+        $issue = $warnings[0];
+        $this->assertNotNull($issue->getFixCode());
+        $this->assertNotNull($issue->getDocUrl());
+        $this->assertNotNull($issue->getBusinessImpact());
+        $this->assertSame(20, $issue->getEstimatedFixMinutes());
+
+        $this->cleanTempProject($projectPath);
+    }
+
 }

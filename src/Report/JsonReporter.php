@@ -18,7 +18,10 @@ final class JsonReporter implements ReporterInterface
         private readonly AuditReportNormalizer $normalizer,
     ) {}
 
-    public function generate(AuditReport $report, OutputInterface $output): void
+    /**
+     * @param array<string, mixed> $context
+     */
+    public function generate(AuditReport $report, OutputInterface $output, array $context = []): void
     {
         $data = $this->normalizer->normalize($report);
 

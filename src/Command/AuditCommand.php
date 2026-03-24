@@ -64,6 +64,7 @@ final class AuditCommand extends Command
             ->addOption('all', null, InputOption::VALUE_NONE, 'Tous les modules (défaut si aucun module spécifié)')
             ->addOption('format', 'f', InputOption::VALUE_REQUIRED, 'Format de sortie (console, json)', 'console')
             ->addOption('async', null, InputOption::VALUE_NONE, 'Exécuter les analyzers via Messenger (nécessite un bus configuré)')
+            ->addOption('brief', null, InputOption::VALUE_NONE, 'Affichage condensé : message et fichier uniquement, sans enrichissement')
         ;
     }
 
@@ -96,7 +97,7 @@ final class AuditCommand extends Command
                 return Command::FAILURE;
             }
 
-            $reporter->generate($cachedReport, $output);
+            $reporter->generate($cachedReport, $output, ['brief' => (bool) $input->getOption('brief')]);
 
             $criticals = $cachedReport->getIssuesBySeverity(Severity::CRITICAL);
             return count($criticals) > 0 ? Command::FAILURE : Command::SUCCESS;
@@ -215,7 +216,7 @@ final class AuditCommand extends Command
             return Command::FAILURE;
         }
 
-        $reporter->generate($report, $output);
+        $reporter->generate($report, $output, ['brief' => (bool) $input->getOption('brief')]);
 
         $duration = microtime(true) - $startTime;
         $this->dispatcher->dispatch(

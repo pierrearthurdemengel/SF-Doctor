@@ -99,4 +99,48 @@ class IssueTest extends TestCase
             $this->assertSame($module, $issue->getModule());
         }
     }
+
+
+    public function testCreateIssueWithEnrichmentFields(): void
+    {
+        // On vérifie que les 4 nouveaux champs sont bien stockés et retournés.
+        $issue = new Issue(
+            severity: Severity::CRITICAL,
+            module: Module::SECURITY,
+            analyzer: 'FirewallAnalyzer',
+            message: 'Firewall sans authentification',
+            detail: 'Le firewall main est actif mais aucun authenticator configuré.',
+            suggestion: 'Ajouter form_login ou json_login.',
+            file: 'config/packages/security.yaml',
+            line: 42,
+            fixCode: "security:\n  firewalls:\n    main:\n      form_login: ~",
+            docUrl: 'https://symfony.com/doc/current/security.html#form-login',
+            businessImpact: 'Un utilisateur non authentifié peut accéder aux routes protégées.',
+            estimatedFixMinutes: 15,
+        );
+
+        $this->assertSame("security:\n  firewalls:\n    main:\n      form_login: ~", $issue->getFixCode());
+        $this->assertSame('https://symfony.com/doc/current/security.html#form-login', $issue->getDocUrl());
+        $this->assertSame('Un utilisateur non authentifié peut accéder aux routes protégées.', $issue->getBusinessImpact());
+        $this->assertSame(15, $issue->getEstimatedFixMinutes());
+    }
+
+    public function testEnrichmentFieldsAreNullByDefault(): void
+    {
+        // Sans passer les 4 nouveaux champs, ils doivent tous être null.
+        // Ce test garantit la compatibilité avec les analyzers existants.
+        $issue = new Issue(
+            severity: Severity::WARNING,
+            module: Module::ARCHITECTURE,
+            analyzer: 'ControllerAnalyzer',
+            message: 'Query dans un contrôleur',
+            detail: 'createQueryBuilder() appelé directement dans le contrôleur.',
+            suggestion: 'Déplacer la requête dans un Repository.',
+        );
+
+        $this->assertNull($issue->getFixCode());
+        $this->assertNull($issue->getDocUrl());
+        $this->assertNull($issue->getBusinessImpact());
+        $this->assertNull($issue->getEstimatedFixMinutes());
+    }
 }

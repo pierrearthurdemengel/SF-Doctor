@@ -368,4 +368,60 @@ class AccessControlAnalyzerTest extends TestCase
         $analyzer = $this->createAnalyzer(null);
         $this->assertSame('Access Control Analyzer', $analyzer->getName());
     }
+
+    // =============================================
+    // Enrichissement des champs
+    // =============================================
+
+    public function testDeprecatedRoleIssueHasEnrichmentFields(): void
+    {
+        $analyzer = $this->createAnalyzer([
+            'security' => [
+                'access_control' => [
+                    ['path' => '^/public', 'roles' => 'IS_AUTHENTICATED_ANONYMOUSLY'],
+                ],
+            ],
+        ]);
+        $report = $this->createReport();
+
+        $analyzer->analyze($report);
+
+        $warnings = $report->getIssuesBySeverity(Severity::WARNING);
+        $deprecatedWarnings = array_values(array_filter(
+            $warnings,
+            fn ($issue) => str_contains($issue->getMessage(), 'déprécié'),
+        ));
+
+        $this->assertCount(1, $deprecatedWarnings);
+        $issue = $deprecatedWarnings[0];
+        $this->assertNotNull($issue->getFixCode());
+        $this->assertNotNull($issue->getDocUrl());
+        $this->assertNotNull($issue->getBusinessImpact());
+        $this->assertSame(5, $issue->getEstimatedFixMinutes());
+    }
+
+    public function testCatchAllIssueHasEnrichmentFields(): void
+    {
+        $analyzer = $this->createAnalyzer([
+            'security' => [
+                'access_control' => [
+                    ['path' => '^/', 'roles' => 'ROLE_USER'],
+                    ['path' => '^/admin', 'roles' => 'ROLE_ADMIN'],
+                ],
+            ],
+        ]);
+        $report = $this->createReport();
+
+        $analyzer->analyze($report);
+
+        $criticals = $report->getIssuesBySeverity(Severity::CRITICAL);
+        $this->assertCount(1, $criticals);
+
+        $issue = $criticals[0];
+        $this->assertNotNull($issue->getFixCode());
+        $this->assertNotNull($issue->getDocUrl());
+        $this->assertNotNull($issue->getBusinessImpact());
+        $this->assertSame(10, $issue->getEstimatedFixMinutes());
+        $this->assertStringContainsString('matching-order', $issue->getDocUrl() ?? '');
+    }
 }

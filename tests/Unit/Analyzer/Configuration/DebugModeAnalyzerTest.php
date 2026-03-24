@@ -176,4 +176,60 @@ class DebugModeAnalyzerTest extends TestCase
 
         $this->assertCount(0, $report->getIssues());
     }
+
+    // --- Enrichissement des champs ---
+
+    public function testAppEnvAbsentIssueHasEnrichmentFields(): void
+    {
+        file_put_contents($this->projectPath . '/.env', 'APP_DEBUG=false');
+
+        $report = new AuditReport($this->projectPath, []);
+        $this->analyzer->analyze($report);
+
+        $issues = $report->getIssues();
+        $this->assertCount(1, $issues);
+
+        $issue = $issues[0];
+        $this->assertNotNull($issue->getFixCode());
+        $this->assertNotNull($issue->getDocUrl());
+        $this->assertNotNull($issue->getBusinessImpact());
+        $this->assertSame(5, $issue->getEstimatedFixMinutes());
+    }
+
+    public function testAppEnvWrongValueIssueHasEnrichmentFields(): void
+    {
+        file_put_contents($this->projectPath . '/.env', 'APP_ENV=dev');
+
+        $report = new AuditReport($this->projectPath, []);
+        $this->analyzer->analyze($report);
+
+        $issues = $report->getIssuesBySeverity(Severity::CRITICAL);
+        $this->assertCount(1, $issues);
+
+        $issue = $issues[0];
+        $this->assertNotNull($issue->getFixCode());
+        $this->assertNotNull($issue->getDocUrl());
+        $this->assertNotNull($issue->getBusinessImpact());
+        $this->assertSame(5, $issue->getEstimatedFixMinutes());
+        $this->assertStringContainsString('environments', $issue->getDocUrl() ?? '');
+    }
+
+    public function testAppDebugTrueIssueHasEnrichmentFields(): void
+    {
+        file_put_contents($this->projectPath . '/.env', "APP_ENV=prod\nAPP_DEBUG=true");
+
+        $report = new AuditReport($this->projectPath, []);
+        $this->analyzer->analyze($report);
+
+        $issues = $report->getIssuesBySeverity(Severity::CRITICAL);
+        $this->assertCount(1, $issues);
+
+        $issue = $issues[0];
+        $this->assertNotNull($issue->getFixCode());
+        $this->assertNotNull($issue->getDocUrl());
+        $this->assertNotNull($issue->getBusinessImpact());
+        $this->assertSame(5, $issue->getEstimatedFixMinutes());
+        $this->assertStringContainsString('debug-mode', $issue->getDocUrl() ?? '');
+    }
+
 }

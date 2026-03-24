@@ -136,4 +136,32 @@ final class AuditReportNormalizerTest extends TestCase
             suggestion: 'Test suggestion',
         );
     }
+
+    public function testIssueEnrichmentFieldsPassThroughNormalization(): void
+    {
+        // Verifie que les champs d'enrichissement sont bien present dans les issues normalisees.
+        // AuditReportNormalizer delegue a IssueNormalizer - ce test garantit que
+        // la chaine de delegation ne perd pas les nouveaux champs.
+        $report = $this->createReport();
+        $report->addIssue(new Issue(
+            severity: Severity::CRITICAL,
+            module: Module::SECURITY,
+            analyzer: 'FirewallAnalyzer',
+            message: 'Firewall sans authentification',
+            detail: 'Aucun authenticator configuré.',
+            suggestion: 'Ajouter form_login.',
+            fixCode: "security:\n  firewalls:\n    main:\n      form_login: ~",
+            docUrl: 'https://symfony.com/doc/current/security.html',
+            businessImpact: 'Accès non authentifié aux routes protégées.',
+            estimatedFixMinutes: 15,
+        ));
+
+        $result = $this->normalizer->normalize($report);
+
+        $normalizedIssue = $result['issues'][0];
+        $this->assertSame("security:\n  firewalls:\n    main:\n      form_login: ~", $normalizedIssue['fix_code']);
+        $this->assertSame('https://symfony.com/doc/current/security.html', $normalizedIssue['doc_url']);
+        $this->assertSame('Accès non authentifié aux routes protégées.', $normalizedIssue['business_impact']);
+        $this->assertSame(15, $normalizedIssue['estimated_fix_minutes']);
+    }
 }

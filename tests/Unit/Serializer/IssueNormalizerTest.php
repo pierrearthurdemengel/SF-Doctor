@@ -43,6 +43,10 @@ final class IssueNormalizerTest extends TestCase
         $this->assertArrayHasKey('suggestion', $result);
         $this->assertArrayHasKey('file', $result);
         $this->assertArrayHasKey('line', $result);
+        $this->assertArrayHasKey('fix_code', $result);
+        $this->assertArrayHasKey('doc_url', $result);
+        $this->assertArrayHasKey('business_impact', $result);
+        $this->assertArrayHasKey('estimated_fix_minutes', $result);
     }
 
     public function testSeverityIsLowercaseName(): void
@@ -94,6 +98,54 @@ final class IssueNormalizerTest extends TestCase
         $types = $this->normalizer->getSupportedTypes(null);
         $this->assertArrayHasKey(Issue::class, $types);
         $this->assertTrue($types[Issue::class]);
+    }
+
+    public function testEnrichmentFieldsAreNullByDefault(): void
+    {
+        // Sans les 4 champs d'enrichissement, le normalizer doit retourner null pour chacun.
+        $issue = $this->createIssue();
+        $result = $this->normalizer->normalize($issue);
+
+        $this->assertNull($result['fix_code']);
+        $this->assertNull($result['doc_url']);
+        $this->assertNull($result['business_impact']);
+        $this->assertNull($result['estimated_fix_minutes']);
+    }
+
+    public function testEnrichmentFieldsAreNormalizedWhenSet(): void
+    {
+        $issue = new Issue(
+            severity: Severity::CRITICAL,
+            module: Module::SECURITY,
+            analyzer: 'FirewallAnalyzer',
+            message: 'Firewall sans authentification',
+            detail: 'Aucun authenticator configuré.',
+            suggestion: 'Ajouter form_login.',
+            fixCode: "security:\n  firewalls:\n    main:\n      form_login: ~",
+            docUrl: 'https://symfony.com/doc/current/security.html',
+            businessImpact: 'Accès non authentifié aux routes protégées.',
+            estimatedFixMinutes: 15,
+        );
+
+        $result = $this->normalizer->normalize($issue);
+
+        $this->assertSame("security:\n  firewalls:\n    main:\n      form_login: ~", $result['fix_code']);
+        $this->assertSame('https://symfony.com/doc/current/security.html', $result['doc_url']);
+        $this->assertSame('Accès non authentifié aux routes protégées.', $result['business_impact']);
+        $this->assertSame(15, $result['estimated_fix_minutes']);
+    }
+
+    public function testEnrichmentFieldsUsesSnakeCase(): void
+    {
+        // Les noms de clés JSON suivent la convention snake_case.
+        // Les propriétés PHP sont en camelCase (fixCode) mais les clés JSON en snake_case (fix_code).
+        $issue = $this->createIssue();
+        $result = $this->normalizer->normalize($issue);
+
+        $this->assertArrayNotHasKey('fixCode', $result);
+        $this->assertArrayNotHasKey('docUrl', $result);
+        $this->assertArrayNotHasKey('businessImpact', $result);
+        $this->assertArrayNotHasKey('estimatedFixMinutes', $result);
     }
 
     private function createIssue(

@@ -45,9 +45,6 @@ class DebugModeAnalyzer implements AnalyzerInterface
     }
 
     /**
-     * Charge les variables d'environnement depuis .env.prod ou .env.
-     * .env.prod est prioritaire : c'est le fichier charge en production.
-     *
      * @return array<string, string>
      */
     private function loadEnvVars(): array
@@ -67,9 +64,6 @@ class DebugModeAnalyzer implements AnalyzerInterface
     }
 
     /**
-     * Parse le contenu d'un fichier .env et retourne un tableau cle => valeur.
-     * Ignore les lignes vides et les commentaires (prefixe #).
-     *
      * @return array<string, string>
      */
     private function parseEnvFile(string $content): array
@@ -96,9 +90,6 @@ class DebugModeAnalyzer implements AnalyzerInterface
     }
 
     /**
-     * Verifie que APP_ENV est defini a "prod".
-     * L'absence de la variable ou une valeur differente de "prod" est critique.
-     *
      * @param array<string, string> $vars
      */
     private function checkAppEnv(array $vars, AuditReport $report): void
@@ -112,6 +103,12 @@ class DebugModeAnalyzer implements AnalyzerInterface
                 detail: 'Symfony defaults to "dev" if APP_ENV is not set.',
                 suggestion: 'Add APP_ENV=prod to your .env.prod file.',
                 file: '.env.prod / .env',
+                fixCode: "# Dans .env.prod :\nAPP_ENV=prod",
+                docUrl: 'https://symfony.com/doc/current/configuration.html#configuration-environments',
+                businessImpact: 'Sans APP_ENV=prod, Symfony démarre en mode "dev". '
+                    . 'Le profiler, les logs détaillés et les messages d\'erreur complets '
+                    . 'sont exposés à n\'importe quel visiteur.',
+                estimatedFixMinutes: 5,
             ));
 
             return;
@@ -126,14 +123,17 @@ class DebugModeAnalyzer implements AnalyzerInterface
                 detail: 'Running with APP_ENV=dev in production exposes debug tools and disables caches.',
                 suggestion: 'Set APP_ENV=prod in your .env.prod file.',
                 file: '.env.prod / .env',
+                fixCode: "# Dans .env.prod :\nAPP_ENV=prod",
+                docUrl: 'https://symfony.com/doc/current/configuration.html#configuration-environments',
+                businessImpact: 'Le mode dev expose la Symfony Toolbar, le Profiler et les traces '
+                    . 'd\'exception complètes. Un attaquant peut lire les requêtes SQL, '
+                    . 'les variables de session et les paramètres de configuration.',
+                estimatedFixMinutes: 5,
             ));
         }
     }
 
     /**
-     * Verifie que APP_DEBUG n'est pas active.
-     * APP_DEBUG=true en production expose les traces d'erreur completes.
-     *
      * @param array<string, string> $vars
      */
     private function checkAppDebug(array $vars, AuditReport $report): void
@@ -151,6 +151,13 @@ class DebugModeAnalyzer implements AnalyzerInterface
                 detail: 'Debug mode enabled in production exposes full stack traces and internal configuration.',
                 suggestion: 'Set APP_DEBUG=false in your .env.prod file.',
                 file: '.env.prod / .env',
+                fixCode: "# Dans .env.prod :\nAPP_DEBUG=false",
+                docUrl: 'https://symfony.com/doc/current/configuration/front_controllers_and_kernel.html#debug-mode',
+                businessImpact: 'Les stack traces complètes exposent la structure interne du projet, '
+                    . 'les chemins absolus, les noms de classes et parfois des tokens ou mots de passe '
+                    . 'présents dans les paramètres. Blackfire mesure une dégradation de performance '
+                    . 'de 40 à 70% avec APP_DEBUG=true.',
+                estimatedFixMinutes: 5,
             ));
         }
     }

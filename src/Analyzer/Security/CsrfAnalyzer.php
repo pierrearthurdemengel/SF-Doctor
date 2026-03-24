@@ -49,12 +49,6 @@ final class CsrfAnalyzer implements AnalyzerInterface
         return class_exists(\Symfony\Component\Form\AbstractType::class);
     }
 
-    /**
-     * Verifie si le CSRF est desactive globalement dans framework.yaml.
-     *
-     * Une desactivation globale est la plus dangereuse : elle s'applique
-     * a tous les formulaires du projet sans exception.
-     */
     private function checkGlobalCsrfConfig(AuditReport $report): void
     {
         $framework = $this->configReader->read('config/packages/framework.yaml');
@@ -65,8 +59,6 @@ final class CsrfAnalyzer implements AnalyzerInterface
 
         $framework = $this->parameterResolver->resolveArray($framework);
 
-        // csrf_protection peut etre declare sous framework.form ou directement
-        // sous framework selon la version de Symfony et la config du projet.
         $csrfUnderForm = $framework['framework']['form']['csrf_protection'] ?? null;
         $csrfDirect = $framework['framework']['csrf_protection'] ?? null;
 
@@ -83,13 +75,16 @@ final class CsrfAnalyzer implements AnalyzerInterface
                     . "Si le projet est une API stateless pure (sans session), "
                     . "documenter ce choix et s'assurer qu'aucun formulaire HTML n'est expose.",
                 file: 'config/packages/framework.yaml',
+                fixCode: "# Supprimer ou corriger dans config/packages/framework.yaml :\nframework:\n    form:\n        csrf_protection: true",
+                docUrl: 'https://symfony.com/doc/current/security/csrf.html',
+                businessImpact: 'Un attaquant peut forcer un utilisateur connecté à soumettre '
+                    . 'un formulaire à son insu depuis un site tiers (virement, suppression de compte, '
+                    . 'changement de mot de passe).',
+                estimatedFixMinutes: 10,
             ));
         }
     }
 
-    /**
-     * Scanne les FormType PHP pour detecter les desactivations individuelles du CSRF.
-     */
     private function checkFormTypes(AuditReport $report): void
     {
         $formDir = $this->projectPath . '/src/Form';
@@ -126,15 +121,16 @@ final class CsrfAnalyzer implements AnalyzerInterface
                     . "Si ce formulaire est utilise exclusivement par une API stateless, "
                     . "documenter ce choix explicitement dans le code.",
                 file: $relativePath,
+                fixCode: "// Dans {$file->getFilename()}, supprimer ou corriger :\n\$resolver->setDefaults([\n    'csrf_protection' => true,\n]);",
+                docUrl: 'https://symfony.com/doc/current/security/csrf.html#csrf-protection-in-symfony-forms',
+                businessImpact: 'Ce formulaire est vulnérable aux attaques CSRF. '
+                    . 'Un attaquant peut déclencher sa soumission depuis un site tiers '
+                    . 'au nom d\'un utilisateur connecté.',
+                estimatedFixMinutes: 5,
             ));
         }
     }
 
-    /**
-     * Detecte la presence de 'csrf_protection' => false dans le contenu d'un fichier.
-     *
-     * Couvre les variantes avec guillemets simples, doubles, et espaces variables.
-     */
     private function hasCsrfDisabled(string $content): bool
     {
         return (bool) preg_match(

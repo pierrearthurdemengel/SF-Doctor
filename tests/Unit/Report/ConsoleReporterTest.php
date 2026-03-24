@@ -12,18 +12,6 @@ use Symfony\Component\Console\Output\BufferedOutput;
 
 class ConsoleReporterTest extends TestCase
 {
-    // --- Helpers ---
-
-    /**
-     * Crée un ConsoleReporter qui écrit dans un BufferedOutput.
-     *
-     * BufferedOutput est une classe du composant Console.
-     * Au lieu d'écrire dans le terminal (comme StreamOutput fait),
-     * elle stocke tout le texte dans une variable interne.
-     * On récupère le contenu avec $output->fetch().
-     *
-     * C'est l'outil parfait pour tester du code qui écrit dans la console.
-     */
     private function createReporterAndOutput(): array
     {
         $output = new BufferedOutput(BufferedOutput::VERBOSITY_NORMAL, true);
@@ -39,6 +27,10 @@ class ConsoleReporterTest extends TestCase
         string $message = 'Test message',
         ?string $file = null,
         ?int $line = null,
+        ?string $fixCode = null,
+        ?string $docUrl = null,
+        ?string $businessImpact = null,
+        ?int $estimatedFixMinutes = null,
     ): Issue {
         return new Issue(
             severity: $severity,
@@ -49,6 +41,10 @@ class ConsoleReporterTest extends TestCase
             suggestion: 'Test suggestion',
             file: $file,
             line: $line,
+            fixCode: $fixCode,
+            docUrl: $docUrl,
+            businessImpact: $businessImpact,
+            estimatedFixMinutes: $estimatedFixMinutes,
         );
     }
 
@@ -69,14 +65,11 @@ class ConsoleReporterTest extends TestCase
 
     public function testOutputContainsTitle(): void
     {
-        /** @var ConsoleReporter $reporter */
-        /** @var BufferedOutput $output */
         [$reporter, $output] = $this->createReporterAndOutput();
 
         $report = new AuditReport('/fake/project', [Module::SECURITY]);
         $reporter->generate($report, $output);
 
-        // fetch() retourne TOUT le texte qui a été écrit dans le BufferedOutput.
         $content = $output->fetch();
 
         $this->assertStringContainsString('SF Doctor', $content);
@@ -84,8 +77,6 @@ class ConsoleReporterTest extends TestCase
 
     public function testOutputContainsProjectPath(): void
     {
-        /** @var ConsoleReporter $reporter */
-        /** @var BufferedOutput $output */
         [$reporter, $output] = $this->createReporterAndOutput();
 
         $report = new AuditReport('/home/pierre/mon-projet', [Module::SECURITY]);
@@ -98,8 +89,6 @@ class ConsoleReporterTest extends TestCase
 
     public function testOutputContainsModuleNames(): void
     {
-        /** @var ConsoleReporter $reporter */
-        /** @var BufferedOutput $output */
         [$reporter, $output] = $this->createReporterAndOutput();
 
         $report = new AuditReport('/fake', [Module::SECURITY, Module::ARCHITECTURE]);
@@ -117,8 +106,6 @@ class ConsoleReporterTest extends TestCase
 
     public function testOutputContainsIssueMessage(): void
     {
-        /** @var ConsoleReporter $reporter */
-        /** @var BufferedOutput $output */
         [$reporter, $output] = $this->createReporterAndOutput();
 
         $report = new AuditReport('/fake', [Module::SECURITY]);
@@ -134,8 +121,6 @@ class ConsoleReporterTest extends TestCase
 
     public function testOutputContainsAnalyzerName(): void
     {
-        /** @var ConsoleReporter $reporter */
-        /** @var BufferedOutput $output */
         [$reporter, $output] = $this->createReporterAndOutput();
 
         $report = new AuditReport('/fake', [Module::SECURITY]);
@@ -151,8 +136,6 @@ class ConsoleReporterTest extends TestCase
 
     public function testOutputContainsSuggestion(): void
     {
-        /** @var ConsoleReporter $reporter */
-        /** @var BufferedOutput $output */
         [$reporter, $output] = $this->createReporterAndOutput();
 
         $report = new AuditReport('/fake', [Module::SECURITY]);
@@ -173,8 +156,6 @@ class ConsoleReporterTest extends TestCase
 
     public function testOutputContainsFileLocation(): void
     {
-        /** @var ConsoleReporter $reporter */
-        /** @var BufferedOutput $output */
         [$reporter, $output] = $this->createReporterAndOutput();
 
         $report = new AuditReport('/fake', [Module::SECURITY]);
@@ -186,23 +167,19 @@ class ConsoleReporterTest extends TestCase
 
         $content = $output->fetch();
 
-        // Le format est "fichier:ligne"
         $this->assertStringContainsString('security.yaml:42', $content);
     }
 
     public function testOutputShowsDashWhenNoFile(): void
     {
-        /** @var ConsoleReporter $reporter */
-        /** @var BufferedOutput $output */
         [$reporter, $output] = $this->createReporterAndOutput();
 
         $report = new AuditReport('/fake', [Module::SECURITY]);
-        $report->addIssue($this->createIssue()); // pas de file ni line
+        $report->addIssue($this->createIssue());
         $reporter->generate($report, $output);
 
         $content = $output->fetch();
 
-        // Le tableau doit contenir un "-" pour la colonne fichier
         $this->assertStringContainsString('-', $content);
     }
 
@@ -212,30 +189,22 @@ class ConsoleReporterTest extends TestCase
 
     public function testPerfectScoreShowsSuccess(): void
     {
-        /** @var ConsoleReporter $reporter */
-        /** @var BufferedOutput $output */
         [$reporter, $output] = $this->createReporterAndOutput();
 
-        // Rapport vide = score 100
         $report = new AuditReport('/fake', [Module::SECURITY]);
         $reporter->generate($report, $output);
 
         $content = $output->fetch();
 
-        // success() dans SymfonyStyle produit un bloc avec "OK" ou "[OK]"
-        // et le texte du message. On vérifie que le score 100 apparaît.
         $this->assertStringContainsString('100/100', $content);
     }
 
     public function testLowScoreShowsError(): void
     {
-        /** @var ConsoleReporter $reporter */
-        /** @var BufferedOutput $output */
         [$reporter, $output] = $this->createReporterAndOutput();
 
         $report = new AuditReport('/fake', [Module::SECURITY]);
 
-        // 6 CRITICAL = -60, score = 40 (< 50 → error)
         for ($i = 0; $i < 6; $i++) {
             $report->addIssue($this->createIssue(Severity::CRITICAL));
         }
@@ -248,13 +217,10 @@ class ConsoleReporterTest extends TestCase
 
     public function testMediumScoreShowsWarning(): void
     {
-        /** @var ConsoleReporter $reporter */
-        /** @var BufferedOutput $output */
         [$reporter, $output] = $this->createReporterAndOutput();
 
         $report = new AuditReport('/fake', [Module::SECURITY]);
 
-        // 4 CRITICAL = -40, score = 60 (>= 50 et < 80 → warning)
         for ($i = 0; $i < 4; $i++) {
             $report->addIssue($this->createIssue(Severity::CRITICAL));
         }
@@ -271,17 +237,13 @@ class ConsoleReporterTest extends TestCase
 
     public function testEmptyModuleShowsSuccessMessage(): void
     {
-        /** @var ConsoleReporter $reporter */
-        /** @var BufferedOutput $output */
         [$reporter, $output] = $this->createReporterAndOutput();
 
-        // Rapport sans issues
         $report = new AuditReport('/fake', [Module::SECURITY]);
         $reporter->generate($report, $output);
 
         $content = $output->fetch();
 
-        // Le module Security sans issues doit afficher un message positif
         $this->assertStringContainsString('Aucun problème', $content);
     }
 
@@ -291,8 +253,6 @@ class ConsoleReporterTest extends TestCase
 
     public function testOutputContainsIssueCount(): void
     {
-        /** @var ConsoleReporter $reporter */
-        /** @var BufferedOutput $output */
         [$reporter, $output] = $this->createReporterAndOutput();
 
         $report = new AuditReport('/fake', [Module::SECURITY]);
@@ -303,7 +263,6 @@ class ConsoleReporterTest extends TestCase
 
         $content = $output->fetch();
 
-        // Le résumé doit indiquer 3 issues
         $this->assertStringContainsString('3', $content);
     }
 
@@ -313,8 +272,6 @@ class ConsoleReporterTest extends TestCase
 
     public function testCriticalSeverityDisplayed(): void
     {
-        /** @var ConsoleReporter $reporter */
-        /** @var BufferedOutput $output */
         [$reporter, $output] = $this->createReporterAndOutput();
 
         $report = new AuditReport('/fake', [Module::SECURITY]);
@@ -328,8 +285,6 @@ class ConsoleReporterTest extends TestCase
 
     public function testOkIssuesAreDisplayed(): void
     {
-        /** @var ConsoleReporter $reporter */
-        /** @var BufferedOutput $output */
         [$reporter, $output] = $this->createReporterAndOutput();
 
         $report = new AuditReport('/fake', [Module::SECURITY]);
@@ -338,14 +293,11 @@ class ConsoleReporterTest extends TestCase
 
         $content = $output->fetch();
 
-        // Les OK sont affichés dans le tableau
         $this->assertStringContainsString('OK', $content);
     }
 
     public function testOkIssuesSuggestionNotShown(): void
     {
-        /** @var ConsoleReporter $reporter */
-        /** @var BufferedOutput $output */
         [$reporter, $output] = $this->createReporterAndOutput();
 
         $report = new AuditReport('/fake', [Module::SECURITY]);
@@ -361,8 +313,95 @@ class ConsoleReporterTest extends TestCase
 
         $content = $output->fetch();
 
-        // Les issues OK n'affichent pas leur suggestion
-        // (pas de flèche → devant la suggestion)
         $this->assertStringNotContainsString('Suggestion invisible', $content);
+    }
+
+    // =============================================
+    // Test des champs d'enrichissement
+    // =============================================
+
+    public function testBusinessImpactIsDisplayed(): void
+    {
+        [$reporter, $output] = $this->createReporterAndOutput();
+
+        $report = new AuditReport('/fake', [Module::SECURITY]);
+        $report->addIssue($this->createIssue(
+            businessImpact: 'Un attaquant peut accéder aux données clients.',
+        ));
+        $reporter->generate($report, $output);
+
+        $this->assertStringContainsString(
+            'Un attaquant peut accéder aux données clients.',
+            $output->fetch(),
+        );
+    }
+
+    public function testFixCodeIsDisplayed(): void
+    {
+        [$reporter, $output] = $this->createReporterAndOutput();
+
+        $report = new AuditReport('/fake', [Module::SECURITY]);
+        $report->addIssue($this->createIssue(
+            fixCode: 'form_login: ~',
+        ));
+        $reporter->generate($report, $output);
+
+        $this->assertStringContainsString('form_login: ~', $output->fetch());
+    }
+
+    public function testDocUrlIsDisplayed(): void
+    {
+        [$reporter, $output] = $this->createReporterAndOutput();
+
+        $report = new AuditReport('/fake', [Module::SECURITY]);
+        $report->addIssue($this->createIssue(
+            docUrl: 'https://symfony.com/doc/current/security.html',
+        ));
+        $reporter->generate($report, $output);
+
+        $this->assertStringContainsString(
+            'https://symfony.com/doc/current/security.html',
+            $output->fetch(),
+        );
+    }
+
+    public function testEnrichmentFieldsNotDisplayedWhenNull(): void
+    {
+        [$reporter, $output] = $this->createReporterAndOutput();
+
+        $report = new AuditReport('/fake', [Module::SECURITY]);
+        $report->addIssue($this->createIssue());
+        $reporter->generate($report, $output);
+
+        $content = $output->fetch();
+
+        $this->assertStringNotContainsString('Impact :', $content);
+        $this->assertStringNotContainsString('Fix :', $content);
+        $this->assertStringNotContainsString('Documentation :', $content);
+        $this->assertStringNotContainsString('Temps estimé :', $content);
+    }
+
+    public function testTotalEstimatedTimeIsDisplayed(): void
+    {
+        [$reporter, $output] = $this->createReporterAndOutput();
+
+        $report = new AuditReport('/fake', [Module::SECURITY]);
+        $report->addIssue($this->createIssue(estimatedFixMinutes: 15));
+        $report->addIssue($this->createIssue(estimatedFixMinutes: 30));
+        $reporter->generate($report, $output);
+
+        // 15 + 30 = 45 minutes au total
+        $this->assertStringContainsString('45', $output->fetch());
+    }
+
+    public function testTotalEstimatedTimeNotDisplayedWhenAllNull(): void
+    {
+        [$reporter, $output] = $this->createReporterAndOutput();
+
+        $report = new AuditReport('/fake', [Module::SECURITY]);
+        $report->addIssue($this->createIssue());
+        $reporter->generate($report, $output);
+
+        $this->assertStringNotContainsString('Temps total', $output->fetch());
     }
 }
