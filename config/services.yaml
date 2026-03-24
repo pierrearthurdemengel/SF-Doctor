@@ -45,6 +45,11 @@ services:
 
     # --- Commande CLI ---
 
+    PierreArthur\SfDoctor\Cache\ResultCache:
+        public: true
+        arguments:
+            $cacheDir: ''
+
     PierreArthur\SfDoctor\Command\AuditCommand:
         public: true
         arguments:
@@ -53,4 +58,5 @@ services:
             $projectPath: '%kernel.project_dir%'
             $parameterResolver: '@PierreArthur\SfDoctor\Config\ContainerParameterResolver'
             $dispatcher: '@event_dispatcher'
+            $cache: '@PierreArthur\SfDoctor\Cache\ResultCache'
         tags: ['console.command']

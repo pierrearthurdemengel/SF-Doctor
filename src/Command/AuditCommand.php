@@ -6,6 +6,7 @@ namespace PierreArthur\SfDoctor\Command;
 
 use PierreArthur\SfDoctor\Model\Module;
 use PierreArthur\SfDoctor\Model\Severity;
+use PierreArthur\SfDoctor\Cache\ResultCache;
 use PierreArthur\SfDoctor\Model\AuditReport;
 use Symfony\Component\Console\Command\Command;
 use PierreArthur\SfDoctor\Event\IssueFoundEvent;
@@ -15,11 +16,13 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Console\Attribute\AsCommand;
 use PierreArthur\SfDoctor\Report\ReporterInterface;
 use Symfony\Component\Console\Input\InputInterface;
+use PierreArthur\SfDoctor\Cache\ResultCacheInterface;
 use PierreArthur\SfDoctor\Analyzer\AnalyzerInterface;
 use PierreArthur\SfDoctor\Event\ModuleCompletedEvent;
 use PierreArthur\SfDoctor\Event\AnalysisStartedEvent;
 use Symfony\Component\Console\Output\OutputInterface;
 use PierreArthur\SfDoctor\Event\AnalysisCompletedEvent;
+use PierreArthur\SfDoctor\EventSubscriber\CacheSubscriber;
 use PierreArthur\SfDoctor\Config\ParameterResolverInterface;
 use PierreArthur\SfDoctor\EventSubscriber\ProgressSubscriber;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -42,6 +45,7 @@ final class AuditCommand extends Command
         /** @phpstan-ignore-next-line */
         private readonly ParameterResolverInterface $parameterResolver,
         private readonly EventDispatcherInterface $dispatcher,
+        private readonly ResultCacheInterface $cache,
     ) {
         parent::__construct();
     }
@@ -68,6 +72,41 @@ final class AuditCommand extends Command
         // Le subscriber est créé ici car OutputInterface n'est disponible
         // qu'au moment de l'exécution de la commande, pas au boot du container.
         $this->dispatcher->addSubscriber(new ProgressSubscriber($output));
+        $this->dispatcher->addSubscriber(new CacheSubscriber($this->cache));
+
+        // --- Vérification du cache ---
+        $hash = $this->cache->computeHash($this->projectPath);
+        $cachedReport = $this->cache->load($hash);
+
+        if ($cachedReport !== null) {
+            $io->text('<comment>Rapport chargé depuis le cache.</comment>');
+            $io->newLine();
+
+            $format = $input->getOption('format');
+            $reported = false;
+
+            foreach ($this->reporters as $reporter) {
+                if ($reporter->getFormat() === $format) {
+                    $reporter->generate($cachedReport);
+                    $reported = true;
+                    break;
+                }
+            }
+
+            if (!$reported && $format === 'console') {
+                $consoleReporter = new ConsoleReporter($output);
+                $consoleReporter->generate($cachedReport);
+                $reported = true;
+            }
+
+            if (!$reported) {
+                $io->error(sprintf('Format de rapport inconnu : "%s"', $format));
+                return Command::FAILURE;
+            }
+
+            $criticals = $cachedReport->getIssuesBySeverity(Severity::CRITICAL);
+            return count($criticals) > 0 ? Command::FAILURE : Command::SUCCESS;
+        }
 
         $modules = $this->resolveModules($input);
 

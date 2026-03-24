@@ -7,15 +7,16 @@ use PierreArthur\SfDoctor\Model\Issue;
 use PierreArthur\SfDoctor\Model\Module;
 use PierreArthur\SfDoctor\Model\Severity;
 use Symfony\Component\Console\Application;
+use PierreArthur\SfDoctor\Cache\ResultCache;
 use PierreArthur\SfDoctor\Model\AuditReport;
 use Symfony\Component\Console\Command\Command;
 use PierreArthur\SfDoctor\Command\AuditCommand;
 use PierreArthur\SfDoctor\Report\ReporterInterface;
 use Symfony\Component\Console\Tester\CommandTester;
+use PierreArthur\SfDoctor\Cache\ResultCacheInterface;
 use PierreArthur\SfDoctor\Analyzer\AnalyzerInterface;
 use PierreArthur\SfDoctor\Config\NullParameterResolver;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-
 
 final class AuditCommandTest extends TestCase
 {
@@ -207,10 +208,12 @@ final class AuditCommandTest extends TestCase
     private function createCommandTester(array $analyzers, array $reporters = []): CommandTester
     {
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
-
-        // Le dispatcher peut être appelé plusieurs fois, on ne vérifie pas les appels ici.
-        // Les tests d'intégration couvriront le dispatch réel.
         $dispatcher->method('dispatch')->willReturnArgument(0);
+
+        // Le cache retourne null = pas de cache existant, l'analyse tourne normalement.
+        $cache = $this->createMock(ResultCacheInterface::class);
+        $cache->method('computeHash')->willReturn('fake-hash');
+        $cache->method('load')->willReturn(null);
 
         $command = new AuditCommand(
             $analyzers,
@@ -218,6 +221,7 @@ final class AuditCommandTest extends TestCase
             self::PROJECT_PATH,
             new NullParameterResolver(),
             $dispatcher,
+            $cache,
         );
 
         $application = new Application('SF Doctor', 'test');
