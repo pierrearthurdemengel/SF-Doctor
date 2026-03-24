@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PierreArthur\SfDoctor;
 
 use PierreArthur\SfDoctor\Analyzer\AnalyzerInterface;
+use PierreArthur\SfDoctor\Report\ReporterInterface;
 use PierreArthur\SfDoctor\DependencyInjection\Compiler\AnalyzerCompilerPass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\HttpKernel\Bundle\Bundle;
@@ -23,6 +26,12 @@ final class SfDoctorBundle extends Bundle
         $container
             ->registerForAutoconfiguration(AnalyzerInterface::class)
             ->addTag('sf_doctor.analyzer');
+
+        // Autoconfigure : toute classe implementant ReporterInterface
+        // recoit automatiquement le tag "sf_doctor.reporter".
+        $container
+            ->registerForAutoconfiguration(ReporterInterface::class)
+            ->addTag('sf_doctor.reporter');
 
         // CompilerPass : verifie a la compilation que tous les services
         // tagges "sf_doctor.analyzer" implementent bien l'interface.

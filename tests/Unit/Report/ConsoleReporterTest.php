@@ -26,12 +26,8 @@ class ConsoleReporterTest extends TestCase
      */
     private function createReporterAndOutput(): array
     {
-        // Le deuxième paramètre (true) active le "decorated" mode.
-        // Ça signifie que les tags de formatage (<info>, <fg=red>, etc.)
-        // sont gardés dans la sortie. Sans ça, SymfonyStyle les supprimerait
-        // en pensant que le terminal ne supporte pas les couleurs.
         $output = new BufferedOutput(BufferedOutput::VERBOSITY_NORMAL, true);
-        $reporter = new ConsoleReporter($output);
+        $reporter = new ConsoleReporter();
 
         return [$reporter, $output];
     }
@@ -78,7 +74,7 @@ class ConsoleReporterTest extends TestCase
         [$reporter, $output] = $this->createReporterAndOutput();
 
         $report = new AuditReport('/fake/project', [Module::SECURITY]);
-        $reporter->generate($report);
+        $reporter->generate($report, $output);
 
         // fetch() retourne TOUT le texte qui a été écrit dans le BufferedOutput.
         $content = $output->fetch();
@@ -93,7 +89,7 @@ class ConsoleReporterTest extends TestCase
         [$reporter, $output] = $this->createReporterAndOutput();
 
         $report = new AuditReport('/home/pierre/mon-projet', [Module::SECURITY]);
-        $reporter->generate($report);
+        $reporter->generate($report, $output);
 
         $content = $output->fetch();
 
@@ -107,7 +103,7 @@ class ConsoleReporterTest extends TestCase
         [$reporter, $output] = $this->createReporterAndOutput();
 
         $report = new AuditReport('/fake', [Module::SECURITY, Module::ARCHITECTURE]);
-        $reporter->generate($report);
+        $reporter->generate($report, $output);
 
         $content = $output->fetch();
 
@@ -129,7 +125,7 @@ class ConsoleReporterTest extends TestCase
         $report->addIssue($this->createIssue(
             message: 'Firewall sans authentification',
         ));
-        $reporter->generate($report);
+        $reporter->generate($report, $output);
 
         $content = $output->fetch();
 
@@ -146,7 +142,7 @@ class ConsoleReporterTest extends TestCase
         $report->addIssue($this->createIssue(
             analyzer: 'Firewall Analyzer',
         ));
-        $reporter->generate($report);
+        $reporter->generate($report, $output);
 
         $content = $output->fetch();
 
@@ -168,7 +164,7 @@ class ConsoleReporterTest extends TestCase
             detail: 'Détail du problème',
             suggestion: 'Voici comment corriger',
         ));
-        $reporter->generate($report);
+        $reporter->generate($report, $output);
 
         $content = $output->fetch();
 
@@ -186,7 +182,7 @@ class ConsoleReporterTest extends TestCase
             file: 'config/packages/security.yaml',
             line: 42,
         ));
-        $reporter->generate($report);
+        $reporter->generate($report, $output);
 
         $content = $output->fetch();
 
@@ -202,7 +198,7 @@ class ConsoleReporterTest extends TestCase
 
         $report = new AuditReport('/fake', [Module::SECURITY]);
         $report->addIssue($this->createIssue()); // pas de file ni line
-        $reporter->generate($report);
+        $reporter->generate($report, $output);
 
         $content = $output->fetch();
 
@@ -222,7 +218,7 @@ class ConsoleReporterTest extends TestCase
 
         // Rapport vide = score 100
         $report = new AuditReport('/fake', [Module::SECURITY]);
-        $reporter->generate($report);
+        $reporter->generate($report, $output);
 
         $content = $output->fetch();
 
@@ -244,7 +240,7 @@ class ConsoleReporterTest extends TestCase
             $report->addIssue($this->createIssue(Severity::CRITICAL));
         }
 
-        $reporter->generate($report);
+        $reporter->generate($report, $output);
         $content = $output->fetch();
 
         $this->assertStringContainsString('40/100', $content);
@@ -263,7 +259,7 @@ class ConsoleReporterTest extends TestCase
             $report->addIssue($this->createIssue(Severity::CRITICAL));
         }
 
-        $reporter->generate($report);
+        $reporter->generate($report, $output);
         $content = $output->fetch();
 
         $this->assertStringContainsString('60/100', $content);
@@ -281,7 +277,7 @@ class ConsoleReporterTest extends TestCase
 
         // Rapport sans issues
         $report = new AuditReport('/fake', [Module::SECURITY]);
-        $reporter->generate($report);
+        $reporter->generate($report, $output);
 
         $content = $output->fetch();
 
@@ -303,7 +299,7 @@ class ConsoleReporterTest extends TestCase
         $report->addIssue($this->createIssue());
         $report->addIssue($this->createIssue());
         $report->addIssue($this->createIssue());
-        $reporter->generate($report);
+        $reporter->generate($report, $output);
 
         $content = $output->fetch();
 
@@ -323,7 +319,7 @@ class ConsoleReporterTest extends TestCase
 
         $report = new AuditReport('/fake', [Module::SECURITY]);
         $report->addIssue($this->createIssue(Severity::CRITICAL));
-        $reporter->generate($report);
+        $reporter->generate($report, $output);
 
         $content = $output->fetch();
 
@@ -338,7 +334,7 @@ class ConsoleReporterTest extends TestCase
 
         $report = new AuditReport('/fake', [Module::SECURITY]);
         $report->addIssue($this->createIssue(Severity::OK));
-        $reporter->generate($report);
+        $reporter->generate($report, $output);
 
         $content = $output->fetch();
 
@@ -361,7 +357,7 @@ class ConsoleReporterTest extends TestCase
             detail: 'Tout va bien',
             suggestion: 'Suggestion invisible',
         ));
-        $reporter->generate($report);
+        $reporter->generate($report, $output);
 
         $content = $output->fetch();
 

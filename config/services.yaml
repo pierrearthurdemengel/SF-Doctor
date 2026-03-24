@@ -88,3 +88,32 @@ services:
             $projectPath: '%kernel.project_dir%'
         tags:
             - { name: 'sf_doctor.analyzer', module: 'performance' }
+
+    # --- Serializer ---
+
+    PierreArthur\SfDoctor\Serializer\IssueNormalizer:
+        public: true
+        tags:
+            - { name: 'serializer.normalizer' }
+
+    PierreArthur\SfDoctor\Serializer\AuditReportNormalizer:
+        public: true
+        tags:
+            - { name: 'serializer.normalizer' }
+
+    # --- Reporters ---
+    # ConsoleReporter et JsonReporter sont des services.
+    # PdfReporter necessite un $outputPath determine a l'execution :
+    # il est instancie manuellement dans AuditCommand.
+
+    PierreArthur\SfDoctor\Report\ConsoleReporter:
+        public: true
+        tags:
+            - { name: 'sf_doctor.reporter' }
+
+    PierreArthur\SfDoctor\Report\JsonReporter:
+        public: true
+        arguments:
+            $normalizer: '@PierreArthur\SfDoctor\Serializer\AuditReportNormalizer'
+        tags:
+            - { name: 'sf_doctor.reporter' }

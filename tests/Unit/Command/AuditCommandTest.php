@@ -123,30 +123,17 @@ final class AuditCommandTest extends TestCase
     }
 
     // ---------------------------------------------------------------
-    // 6. Le fallback ConsoleReporter fonctionne sans reporter injecté
+    // 6. Sans reporter injecte, la commande retourne FAILURE avec message d'erreur
     // ---------------------------------------------------------------
-    public function testFallbackConsoleReporterIsUsed(): void
+    public function testUnknownFormatReturnsFailureWithMessage(): void
     {
-        $warningIssue = new Issue(
-            severity: Severity::WARNING,
-            module: Module::SECURITY,
-            analyzer: 'TestAnalyzer',
-            message: 'Minor issue detected',
-            detail: 'Not critical.',
-            suggestion: 'Consider fixing.',
-        );
-
-        $analyzer = $this->createAnalyzer(Module::SECURITY, [$warningIssue]);
-
-        // Aucun reporter injecté → le fallback console doit prendre le relais
+        $analyzer = $this->createAnalyzer(Module::SECURITY, []);
+        // Aucun reporter injecte - format inconnu
         $tester = $this->createCommandTester([$analyzer], []);
-        $tester->execute([]);
+        $tester->execute(['--format' => 'unknown']);
 
-        // La commande réussit (WARNING ne bloque pas)
-        $tester->assertCommandIsSuccessful();
-
-        // Le ConsoleReporter a bien affiché quelque chose
-        $this->assertStringContainsString('Score', $tester->getDisplay());
+        $this->assertSame(Command::FAILURE, $tester->getStatusCode());
+        $this->assertStringContainsString('inconnu', $tester->getDisplay());
     }
 
     // ---------------------------------------------------------------
@@ -205,8 +192,14 @@ final class AuditCommandTest extends TestCase
      * @param list<AnalyzerInterface> $analyzers
      * @param list<ReporterInterface> $reporters
      */
-    private function createCommandTester(array $analyzers, array $reporters = []): CommandTester
+    private function createCommandTester(array $analyzers, ?array $reporters = null): CommandTester
     {
+        // Par defaut, on injecte un ConsoleReporter pour que findReporter('console')
+        // trouve toujours un reporter valide dans les tests.
+        if ($reporters === null) {
+            $reporters = [new \PierreArthur\SfDoctor\Report\ConsoleReporter()];
+        }
+
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
         $dispatcher->method('dispatch')->willReturnArgument(0);
 

@@ -11,7 +11,6 @@ use PierreArthur\SfDoctor\Model\AuditReport;
 use Symfony\Component\Console\Command\Command;
 use PierreArthur\SfDoctor\Event\IssueFoundEvent;
 use Symfony\Component\Console\Input\InputOption;
-use PierreArthur\SfDoctor\Report\ConsoleReporter;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Console\Attribute\AsCommand;
 use PierreArthur\SfDoctor\Report\ReporterInterface;
@@ -83,26 +82,14 @@ final class AuditCommand extends Command
             $io->newLine();
 
             $format = $input->getOption('format');
-            $reported = false;
+            $reporter = $this->findReporter($format);
 
-            foreach ($this->reporters as $reporter) {
-                if ($reporter->getFormat() === $format) {
-                    $reporter->generate($cachedReport);
-                    $reported = true;
-                    break;
-                }
-            }
-
-            if (!$reported && $format === 'console') {
-                $consoleReporter = new ConsoleReporter($output);
-                $consoleReporter->generate($cachedReport);
-                $reported = true;
-            }
-
-            if (!$reported) {
+            if ($reporter === null) {
                 $io->error(sprintf('Format de rapport inconnu : "%s"', $format));
                 return Command::FAILURE;
             }
+
+            $reporter->generate($cachedReport, $output);
 
             $criticals = $cachedReport->getIssuesBySeverity(Severity::CRITICAL);
             return count($criticals) > 0 ? Command::FAILURE : Command::SUCCESS;
@@ -173,26 +160,14 @@ final class AuditCommand extends Command
 
         // --- Générer le rapport ---
         $format = $input->getOption('format');
-        $reported = false;
+        $reporter = $this->findReporter($format);
 
-        foreach ($this->reporters as $reporter) {
-            if ($reporter->getFormat() === $format) {
-                $reporter->generate($report);
-                $reported = true;
-                break;
-            }
-        }
-
-        if (!$reported && $format === 'console') {
-            $consoleReporter = new ConsoleReporter($output);
-            $consoleReporter->generate($report);
-            $reported = true;
-        }
-
-        if (!$reported) {
+        if ($reporter === null) {
             $io->error(sprintf('Format de rapport inconnu : "%s"', $format));
             return Command::FAILURE;
         }
+
+        $reporter->generate($report, $output);
 
         // --- Fin : on notifie les subscribers avec la durée et le rapport ---
         $duration = microtime(true) - $startTime;
@@ -251,5 +226,15 @@ final class AuditCommand extends Command
         }
 
         return [Module::SECURITY, Module::ARCHITECTURE, Module::PERFORMANCE];
+    }
+
+    private function findReporter(string $format): ?ReporterInterface
+    {
+        foreach ($this->reporters as $reporter) {
+            if ($reporter->getFormat() === $format) {
+                return $reporter;
+            }
+        }
+        return null;
     }
 }

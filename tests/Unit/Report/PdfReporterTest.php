@@ -44,7 +44,7 @@ final class PdfReporterTest extends TestCase
         $reporter = new PdfReporter($this->outputPath);
         $report = new AuditReport('/fake/path', []);
 
-        $reporter->generate($report);
+        $reporter->generate($report, new \Symfony\Component\Console\Output\NullOutput());
 
         $this->assertFileExists($this->outputPath);
     }
@@ -54,7 +54,7 @@ final class PdfReporterTest extends TestCase
         $reporter = new PdfReporter($this->outputPath);
         $report = new AuditReport('/fake/path', []);
 
-        $reporter->generate($report);
+        $reporter->generate($report, new \Symfony\Component\Console\Output\NullOutput());
 
         $this->assertGreaterThan(0, filesize($this->outputPath));
     }
@@ -64,7 +64,7 @@ final class PdfReporterTest extends TestCase
         $reporter = new PdfReporter($this->outputPath);
         $report = new AuditReport('/fake/path', []);
 
-        $reporter->generate($report);
+        $reporter->generate($report, new \Symfony\Component\Console\Output\NullOutput());
 
         // Tout fichier PDF valide commence par "%PDF".
         $header = file_get_contents($this->outputPath, false, null, 0, 4);
@@ -95,7 +95,7 @@ final class PdfReporterTest extends TestCase
             suggestion: '',
         ));
 
-        $reporter->generate($report);
+        $reporter->generate($report, new \Symfony\Component\Console\Output\NullOutput());
 
         $this->assertFileExists($this->outputPath);
         $this->assertGreaterThan(0, filesize($this->outputPath));

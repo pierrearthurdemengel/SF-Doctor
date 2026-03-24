@@ -8,10 +8,11 @@ use Dompdf\Dompdf;
 use Dompdf\Options;
 use PierreArthur\SfDoctor\Model\AuditReport;
 use PierreArthur\SfDoctor\Model\Severity;
+use Symfony\Component\Console\Output\OutputInterface;
 
-/**
- * Genere un rapport d'audit au format PDF.
- */
+// Genere un rapport d'audit au format PDF via Dompdf.
+// OutputInterface est recu pour respecter le contrat ReporterInterface
+// mais n'est pas utilise : le PDF est ecrit directement dans $outputPath.
 final class PdfReporter implements ReporterInterface
 {
     // Chemin complet du fichier PDF a generer.
@@ -19,7 +20,7 @@ final class PdfReporter implements ReporterInterface
     {
     }
 
-    public function generate(AuditReport $report): void
+    public function generate(AuditReport $report, OutputInterface $output): void
     {
         $options = new Options();
         // Necessaire pour que Dompdf charge les polices systeme.

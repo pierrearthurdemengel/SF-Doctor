@@ -10,6 +10,9 @@ use PierreArthur\SfDoctor\Model\Issue;
 use PierreArthur\SfDoctor\Model\Module;
 use PierreArthur\SfDoctor\Model\Severity;
 use PierreArthur\SfDoctor\Report\JsonReporter;
+use PierreArthur\SfDoctor\Serializer\AuditReportNormalizer;
+use PierreArthur\SfDoctor\Serializer\IssueNormalizer;
+use Symfony\Component\Serializer\Serializer;
 use Symfony\Component\Console\Output\BufferedOutput;
 
 final class JsonReporterTest extends TestCase
@@ -19,8 +22,17 @@ final class JsonReporterTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->output   = new BufferedOutput();
-        $this->reporter = new JsonReporter($this->output);
+        $this->output = new BufferedOutput();
+
+        // Construction du Serializer avec les deux normalizers.
+        // IssueNormalizer est injecte dans AuditReportNormalizer
+        // via le Serializer central (NormalizerAwareTrait).
+        $issueNormalizer = new IssueNormalizer();
+        $auditReportNormalizer = new AuditReportNormalizer();
+        $serializer = new Serializer([$auditReportNormalizer, $issueNormalizer]);
+        $auditReportNormalizer->setNormalizer($serializer);
+
+        $this->reporter = new JsonReporter($auditReportNormalizer);
     }
 
     private function createReport(): AuditReport
@@ -35,7 +47,7 @@ final class JsonReporterTest extends TestCase
 
     public function testOutputIsValidJson(): void
     {
-        $this->reporter->generate($this->createReport());
+        $this->reporter->generate($this->createReport(), $this->output);
 
         $json = $this->output->fetch();
 
@@ -44,7 +56,7 @@ final class JsonReporterTest extends TestCase
 
     public function testMetaContainsProjectPath(): void
     {
-        $this->reporter->generate($this->createReport());
+        $this->reporter->generate($this->createReport(), $this->output);
 
         $data = $this->getDecodedOutput();
 
@@ -53,7 +65,7 @@ final class JsonReporterTest extends TestCase
 
     public function testMetaContainsGeneratedAt(): void
     {
-        $this->reporter->generate($this->createReport());
+        $this->reporter->generate($this->createReport(), $this->output);
 
         $data = $this->getDecodedOutput();
 
@@ -66,7 +78,7 @@ final class JsonReporterTest extends TestCase
 
     public function testStatusIsOkWhenNoIssues(): void
     {
-        $this->reporter->generate($this->createReport());
+        $this->reporter->generate($this->createReport(), $this->output);
 
         $data = $this->getDecodedOutput();
 
@@ -85,7 +97,7 @@ final class JsonReporterTest extends TestCase
             'Enable lazy mode',
         ));
 
-        $this->reporter->generate($report);
+        $this->reporter->generate($report, $this->output);
 
         $data = $this->getDecodedOutput();
 
@@ -112,7 +124,7 @@ final class JsonReporterTest extends TestCase
             'Add an authenticator',
         ));
 
-        $this->reporter->generate($report);
+        $this->reporter->generate($report, $this->output);
 
         $data = $this->getDecodedOutput();
 
@@ -148,7 +160,7 @@ final class JsonReporterTest extends TestCase
             'Add HSTS header',
         ));
 
-        $this->reporter->generate($report);
+        $this->reporter->generate($report, $this->output);
 
         $data = $this->getDecodedOutput();
 
@@ -172,7 +184,7 @@ final class JsonReporterTest extends TestCase
             42,
         ));
 
-        $this->reporter->generate($report);
+        $this->reporter->generate($report, $this->output);
 
         $data  = $this->getDecodedOutput();
         $issue = $data['issues'][0];
@@ -199,7 +211,7 @@ final class JsonReporterTest extends TestCase
             'Add a firewall',
         ));
 
-        $this->reporter->generate($report);
+        $this->reporter->generate($report, $this->output);
 
         $data = $this->getDecodedOutput();
 
@@ -209,7 +221,7 @@ final class JsonReporterTest extends TestCase
 
     public function testScoreIsIncludedInSummary(): void
     {
-        $this->reporter->generate($this->createReport());
+        $this->reporter->generate($this->createReport(), $this->output);
 
         $data = $this->getDecodedOutput();
 
