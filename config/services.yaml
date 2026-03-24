@@ -24,12 +24,16 @@ services:
         arguments:
             $configReader: '@PierreArthur\SfDoctor\Config\YamlConfigReader'
             $parameterResolver: '@PierreArthur\SfDoctor\Config\ContainerParameterResolver'
+        tags:
+            - { name: 'sf_doctor.analyzer', module: 'security' }
 
     PierreArthur\SfDoctor\Analyzer\Security\AccessControlAnalyzer:
         public: true
         arguments:
             $configReader: '@PierreArthur\SfDoctor\Config\YamlConfigReader'
             $parameterResolver: '@PierreArthur\SfDoctor\Config\ContainerParameterResolver'
+        tags:
+            - { name: 'sf_doctor.analyzer', module: 'security' }
 
     PierreArthur\SfDoctor\Analyzer\Security\CsrfAnalyzer:
         public: true
@@ -37,11 +41,17 @@ services:
             $projectPath: '%kernel.project_dir%'
             $configReader: '@PierreArthur\SfDoctor\Config\YamlConfigReader'
             $parameterResolver: '@PierreArthur\SfDoctor\Config\ContainerParameterResolver'
+        tags:
+            - { name: 'sf_doctor.analyzer', module: 'security' }
+
+    # --- Analyzers Architecture ---
 
     PierreArthur\SfDoctor\Analyzer\Architecture\ControllerAnalyzer:
         public: true
         arguments:
             $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: 'sf_doctor.analyzer', module: 'architecture' }
 
     # --- Commande CLI ---
 
@@ -60,3 +70,21 @@ services:
             $dispatcher: '@event_dispatcher'
             $cache: '@PierreArthur\SfDoctor\Cache\ResultCache'
         tags: ['console.command']
+
+    # --- Analyzers Configuration ---
+
+    PierreArthur\SfDoctor\Analyzer\Configuration\DebugModeAnalyzer:
+        public: true
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: 'sf_doctor.analyzer', module: 'security' }
+
+    # --- Analyzers Performance ---
+
+    PierreArthur\SfDoctor\Analyzer\Performance\NplusOneAnalyzer:
+        public: true
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: 'sf_doctor.analyzer', module: 'performance' }

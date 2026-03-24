@@ -690,11 +690,20 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         enabled?: bool|Param, // Default: false
  *     },
  * }
+ * @psalm-type SfDoctorConfig = array{
+ *     score_threshold?: int|Param, // Default: 0
+ *     analyzers?: array{
+ *         security?: bool|Param, // Default: true
+ *         architecture?: bool|Param, // Default: true
+ *         performance?: bool|Param, // Default: true
+ *     },
+ * }
  * @psalm-type ConfigType = array{
  *     imports?: ImportsConfig,
  *     parameters?: ParametersConfig,
  *     services?: ServicesConfig,
  *     framework?: FrameworkConfig,
+ *     sf_doctor?: SfDoctorConfig,
  *     "when@test"?: array{
  *         imports?: ImportsConfig,
  *         parameters?: ParametersConfig,

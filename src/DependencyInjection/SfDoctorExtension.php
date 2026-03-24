@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace PierreArthur\SfDoctor\DependencyInjection;
 
 use Symfony\Component\Config\FileLocator;
@@ -7,29 +9,24 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 
-/**
- * Charge la configuration des services du bundle SF-Doctor.
- *
- * Symfony detecte cette classe automatiquement grace a la convention
- * de nommage : SfDoctorBundle → SfDoctorExtension.
- */
-final class SfDoctorExtension extends Extension
+class SfDoctorExtension extends Extension
 {
     public function load(array $configs, ContainerBuilder $container): void
     {
-        // FileLocator indique dans quel dossier chercher les fichiers de config.
-        // __DIR__ = src/DependencyInjection/
-        // /../config = src/../config = config/ (a la racine du bundle)
-        //
-        // ATTENTION : ce n'est PAS le dossier config/ du projet utilisateur.
-        // C'est le dossier config/ du bundle SF-Doctor lui-meme.
-        $loader = new YamlFileLoader(
-            $container,
-            new FileLocator(__DIR__ . '/../../config'),
-        );
+        // Fusionne et valide toutes les sources de config contre l'arbre defini
+        // dans Configuration.php. Retourne un tableau normalise avec les valeurs
+        // par defaut appliquees.
+        $configuration = new Configuration();
+        $config = $this->processConfiguration($configuration, $configs);
 
-        // Charge le fichier services.yaml du bundle.
-        // Ce fichier declare tous les services : analyzers, reporters, commande.
+        // Expose la config resolue comme parametres du container pour que
+        // les services puissent y acceder via injection ou %sf_doctor.*%.
+        $container->setParameter('sf_doctor.score_threshold', $config['score_threshold']);
+        $container->setParameter('sf_doctor.analyzers.security', $config['analyzers']['security']);
+        $container->setParameter('sf_doctor.analyzers.architecture', $config['analyzers']['architecture']);
+        $container->setParameter('sf_doctor.analyzers.performance', $config['analyzers']['performance']);
+
+        $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../../config'));
         $loader->load('services.yaml');
     }
 }
