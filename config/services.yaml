@@ -455,5 +455,14 @@ services:
             $parameterResolver: '@PierreArthur\SfDoctor\Config\ContainerParameterResolver'
         tags: ['console.command']
 
+    # --- FixCommand (Phase 33) ---
+
+    PierreArthur\SfDoctor\Command\FixCommand:
+        arguments:
+            $analyzers: !tagged_iterator sf_doctor.analyzer
+            $projectPath: '%kernel.project_dir%'
+            $parameterResolver: '@PierreArthur\SfDoctor\Config\ContainerParameterResolver'
+        tags: ['console.command']
+
     PierreArthur\SfDoctor\Config\ConfigReaderInterface:
         alias: PierreArthur\SfDoctor\Config\YamlConfigReader
