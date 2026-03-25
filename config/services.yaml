@@ -312,6 +312,12 @@ services:
         tags:
             - { name: sf_doctor.analyzer, module: api-platform }
 
+    PierreArthur\SfDoctor\Analyzer\ApiPlatform\ValidationAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: api-platform }
+
     # --- Analyzers Migration ---
 
     PierreArthur\SfDoctor\Analyzer\Migration\BundleDependencyAnalyzer:
