@@ -422,5 +422,26 @@ services:
 
     PierreArthur\SfDoctor\Score\ScoreEngine: ~
 
+    # --- Analyzers Surface d'attaque invisible (Phase 31) ---
+
+    PierreArthur\SfDoctor\Analyzer\Security\BundleRouteExposureAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+            $configReader: '@PierreArthur\SfDoctor\Config\YamlConfigReader'
+        tags:
+            - { name: sf_doctor.analyzer, module: security }
+
+    PierreArthur\SfDoctor\Analyzer\Security\SequentialIdAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: security }
+
+    PierreArthur\SfDoctor\Analyzer\Architecture\InterLayerCoherenceAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: architecture }
+
     PierreArthur\SfDoctor\Config\ConfigReaderInterface:
         alias: PierreArthur\SfDoctor\Config\YamlConfigReader
