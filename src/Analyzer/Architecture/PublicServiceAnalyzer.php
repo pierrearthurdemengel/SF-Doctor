@@ -23,9 +23,12 @@ use PierreArthur\SfDoctor\Model\Severity;
 final class PublicServiceAnalyzer implements AnalyzerInterface
 {
     // Patterns de noms de classes exclus de la detection (usage public legitime).
+    // Payum/Gateway : les actions de paiement sont resolues via $container->get() par le ServiceRegistry.
     private const EXCLUDED_PATTERNS = [
         'Command',
         'Controller',
+        'Payum',
+        'Gateway',
     ];
 
     public function __construct(

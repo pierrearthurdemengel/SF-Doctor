@@ -49,9 +49,11 @@ final class MassAssignmentAnalyzer implements AnalyzerInterface
                 continue;
             }
 
+            $realPath = str_replace('\\', '/', $file->getRealPath());
+            $normalizedDir = str_replace('\\', '/', $formDir);
             $relativePath = 'src/Form/' . ltrim(
-                str_replace($formDir, '', $file->getRealPath()),
-                '/\\',
+                str_replace($normalizedDir, '', $realPath),
+                '/',
             );
 
             $this->checkMassAssignment($report, $content, $relativePath, $file->getFilename());

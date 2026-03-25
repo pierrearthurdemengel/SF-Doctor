@@ -59,10 +59,12 @@ final class TestCoverageAnalyzer implements AnalyzerInterface
      */
     private function checkPhpunitConfig(AuditReport $report): void
     {
-        $hasPhpunitXml = file_exists($this->projectPath . '/phpunit.xml');
-        $hasPhpunitXmlDist = file_exists($this->projectPath . '/phpunit.xml.dist');
+        $hasTestConfig = file_exists($this->projectPath . '/phpunit.xml')
+            || file_exists($this->projectPath . '/phpunit.xml.dist')
+            || file_exists($this->projectPath . '/behat.yml')
+            || file_exists($this->projectPath . '/behat.yml.dist');
 
-        if ($hasPhpunitXml || $hasPhpunitXmlDist) {
+        if ($hasTestConfig) {
             return;
         }
 
@@ -95,8 +97,12 @@ final class TestCoverageAnalyzer implements AnalyzerInterface
     private function checkTestsDirectory(AuditReport $report): void
     {
         $testsDir = $this->projectPath . '/tests';
+        $featuresDir = $this->projectPath . '/features';
+        $specDir = $this->projectPath . '/spec';
 
-        if (!is_dir($testsDir)) {
+        $hasAnyTestDir = is_dir($testsDir) || is_dir($featuresDir) || is_dir($specDir);
+
+        if (!$hasAnyTestDir) {
             $report->addIssue(new Issue(
                 severity: Severity::CRITICAL,
                 module: Module::TESTS,
@@ -122,9 +128,22 @@ final class TestCoverageAnalyzer implements AnalyzerInterface
             return;
         }
 
-        // Le repertoire existe, compter les fichiers de test.
-        $testFileCount = $this->countTestFiles($testsDir);
-        $minTestFiles  = $this->getMinTestFiles();
+        // Compter les fichiers de test de tous les frameworks (PHPUnit, Behat, phpspec).
+        $testFileCount = 0;
+
+        if (is_dir($testsDir)) {
+            $testFileCount += $this->countTestFiles($testsDir);
+        }
+
+        if (is_dir($featuresDir)) {
+            $testFileCount += $this->countFeatureFiles($featuresDir);
+        }
+
+        if (is_dir($specDir)) {
+            $testFileCount += $this->countSpecFiles($specDir);
+        }
+
+        $minTestFiles = $this->getMinTestFiles();
 
         if ($testFileCount < $minTestFiles) {
             $report->addIssue(new Issue(
@@ -182,6 +201,46 @@ final class TestCoverageAnalyzer implements AnalyzerInterface
 
             // Convention PHPUnit : les fichiers de test se terminent par Test.php.
             if (str_ends_with($file->getFilename(), 'Test.php')) {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * Compte les fichiers Behat *.feature dans le repertoire features/.
+     */
+    private function countFeatureFiles(string $featuresDir): int
+    {
+        $count = 0;
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($featuresDir, \FilesystemIterator::SKIP_DOTS),
+        );
+
+        foreach ($iterator as $file) {
+            if ($file instanceof \SplFileInfo && $file->getExtension() === 'feature') {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * Compte les fichiers phpspec *Spec.php dans le repertoire spec/.
+     */
+    private function countSpecFiles(string $specDir): int
+    {
+        $count = 0;
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($specDir, \FilesystemIterator::SKIP_DOTS),
+        );
+
+        foreach ($iterator as $file) {
+            if ($file instanceof \SplFileInfo && str_ends_with($file->getFilename(), 'Spec.php')) {
                 $count++;
             }
         }

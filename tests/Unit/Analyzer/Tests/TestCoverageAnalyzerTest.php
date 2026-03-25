@@ -233,7 +233,90 @@ final class TestCoverageAnalyzerTest extends TestCase
     }
 
     // =============================================
-    // Test 9 : Fichiers dans des sous-repertoires sont comptes
+    // Test 9 : behat.yml est accepte comme config de tests
+    // =============================================
+
+    public function testBehatYmlIsAcceptedAsTestConfig(): void
+    {
+        file_put_contents($this->tempDir . '/behat.yml', 'default: ~');
+        mkdir($this->tempDir . '/features', 0777, true);
+        file_put_contents($this->tempDir . '/features/login.feature', 'Feature: Login');
+        file_put_contents($this->tempDir . '/features/cart.feature', 'Feature: Cart');
+        file_put_contents($this->tempDir . '/features/checkout.feature', 'Feature: Checkout');
+
+        $analyzer = new TestCoverageAnalyzer($this->tempDir);
+        $report = $this->createReport();
+
+        $analyzer->analyze($report);
+
+        // behat.yml present + 3 feature files = pas d'issue.
+        $this->assertCount(0, $report->getIssues());
+    }
+
+    // =============================================
+    // Test 10 : fichiers .feature dans features/ sont comptes
+    // =============================================
+
+    public function testFeatureFilesAreCounted(): void
+    {
+        file_put_contents($this->tempDir . '/phpunit.xml', '<phpunit/>');
+        mkdir($this->tempDir . '/features', 0777, true);
+        file_put_contents($this->tempDir . '/features/login.feature', 'Feature: Login');
+        file_put_contents($this->tempDir . '/features/cart.feature', 'Feature: Cart');
+        file_put_contents($this->tempDir . '/features/checkout.feature', 'Feature: Checkout');
+
+        $analyzer = new TestCoverageAnalyzer($this->tempDir);
+        $report = $this->createReport();
+
+        $analyzer->analyze($report);
+
+        // 3 feature files = pas d'issue (seuil minimum = 1).
+        $this->assertCount(0, $report->getIssues());
+    }
+
+    // =============================================
+    // Test 11 : fichiers *Spec.php dans spec/ sont comptes
+    // =============================================
+
+    public function testSpecFilesAreCounted(): void
+    {
+        file_put_contents($this->tempDir . '/phpunit.xml', '<phpunit/>');
+        mkdir($this->tempDir . '/spec/Service', 0777, true);
+        file_put_contents($this->tempDir . '/spec/Service/OrderServiceSpec.php', "<?php\nclass OrderServiceSpec {}");
+        file_put_contents($this->tempDir . '/spec/Service/CartServiceSpec.php', "<?php\nclass CartServiceSpec {}");
+        file_put_contents($this->tempDir . '/spec/Service/PaymentServiceSpec.php', "<?php\nclass PaymentServiceSpec {}");
+
+        $analyzer = new TestCoverageAnalyzer($this->tempDir);
+        $report = $this->createReport();
+
+        $analyzer->analyze($report);
+
+        // 3 spec files = pas d'issue.
+        $this->assertCount(0, $report->getIssues());
+    }
+
+    // =============================================
+    // Test 12 : features/ seul (sans tests/) ne declenche pas CRITICAL
+    // =============================================
+
+    public function testFeaturesDirectoryAloneIsNotCritical(): void
+    {
+        file_put_contents($this->tempDir . '/behat.yml', 'default: ~');
+        mkdir($this->tempDir . '/features', 0777, true);
+        file_put_contents($this->tempDir . '/features/login.feature', 'Feature: Login');
+
+        $analyzer = new TestCoverageAnalyzer($this->tempDir);
+        $report = $this->createReport();
+
+        $analyzer->analyze($report);
+
+        // Pas de CRITICAL : features/ existe.
+        $criticals = $report->getIssuesBySeverity(Severity::CRITICAL);
+        $this->assertCount(0, $criticals);
+    }
+
+    // =============================================
+    // Test 13 : Fichiers dans des sous-repertoires sont comptes
     // =============================================
 
     public function testTestFilesInSubdirectoriesAreCounted(): void

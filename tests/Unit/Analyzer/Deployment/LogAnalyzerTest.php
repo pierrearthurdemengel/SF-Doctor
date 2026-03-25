@@ -84,7 +84,7 @@ final class LogAnalyzerTest extends TestCase
     {
         $lines = [];
         for ($i = 0; $i < 150; $i++) {
-            $lines[] = '[2026-03-01] php.DEPRECATION: User Deprecated: Method getSomething is deprecated [context]';
+            $lines[] = '[2026-03-01] php.DEPRECATION: User Deprecated: Method App\Service\OrderService::getSomething is deprecated [context]';
         }
         file_put_contents($this->tempDir . '/var/log/dev.log', implode("\n", $lines));
 

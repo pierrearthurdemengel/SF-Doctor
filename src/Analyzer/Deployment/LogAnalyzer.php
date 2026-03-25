@@ -119,25 +119,37 @@ final class LogAnalyzer implements AnalyzerInterface
             return;
         }
 
-        // Count deprecations
-        $deprecationCount = 0;
+        // Count deprecations, en separant vendor et projet.
+        $projectDeprecationCount = 0;
+        $vendorDeprecationCount = 0;
         $lines = explode("\n", $content);
 
         foreach ($lines as $line) {
-            if (str_contains($line, 'User Deprecated') || str_contains($line, '.DEPRECATION')) {
-                $deprecationCount++;
+            if (!str_contains($line, 'User Deprecated') && !str_contains($line, '.DEPRECATION')) {
+                continue;
+            }
+
+            // Les deprecations referençant App\ sont du code projet.
+            // Les autres viennent de bundles vendor (ApiPlatform, Sylius, Lexik, etc.).
+            if (str_contains($line, 'App\\')) {
+                $projectDeprecationCount++;
+            } else {
+                $vendorDeprecationCount++;
             }
         }
 
-        if ($deprecationCount >= 100) {
+        if ($projectDeprecationCount >= 50) {
             $report->addIssue(new Issue(
                 severity: Severity::WARNING,
                 module: Module::DEPLOYMENT,
                 analyzer: $this->getName(),
-                message: sprintf('%d deprecation(s) detectee(s) dans dev.log', $deprecationCount),
-                detail: "Plus de {$deprecationCount} deprecations detectees dans les logs de developpement. "
+                message: sprintf('%d deprecation(s) projet detectee(s) dans dev.log', $projectDeprecationCount),
+                detail: "Plus de {$projectDeprecationCount} deprecations du code projet detectees dans les logs de developpement. "
                     . "Ces deprecations indiquent du code qui cessera de fonctionner dans une version "
-                    . "future de Symfony. Elles doivent etre corrigees avant la migration.",
+                    . "future de Symfony. Elles doivent etre corrigees avant la migration."
+                    . ($vendorDeprecationCount > 0
+                        ? " ({$vendorDeprecationCount} deprecation(s) vendor supplementaire(s) ignoree(s) — elles seront corrigees par les mainteneurs des bundles.)"
+                        : ''),
                 suggestion: "Corriger les deprecations une par une en suivant les recommendations "
                     . "du message de deprecation. Utiliser le profiler Symfony pour les lister.",
                 file: 'var/log/dev.log',

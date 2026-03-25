@@ -51,9 +51,11 @@ final class InterLayerCoherenceAnalyzer implements AnalyzerInterface
                 continue;
             }
 
+            $realPath = str_replace('\\', '/', $file->getRealPath());
+            $normalizedEntityDir = str_replace('\\', '/', $entityDir);
             $relativePath = 'src/Entity/' . ltrim(
-                str_replace($entityDir, '', $file->getRealPath()),
-                '/\\',
+                str_replace($normalizedEntityDir, '', $realPath),
+                '/',
             );
 
             $this->checkApiResourceWithoutVoter($report, $content, $relativePath, $file->getFilename());

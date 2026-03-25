@@ -33,10 +33,11 @@ final class RateLimiterAnalyzer implements AnalyzerInterface
     public function analyze(AuditReport $report): void
     {
         $hasRateLimiter = $this->hasRateLimiterConfig();
+        $hasLoginThrottling = $this->hasLoginThrottling();
         $loginRoutes = $this->findRoutesByPattern(['login']);
         $apiRoutes = $this->findRoutesByPattern(['api']);
 
-        $this->checkLoginRoutes($report, $loginRoutes, $hasRateLimiter);
+        $this->checkLoginRoutes($report, $loginRoutes, $hasRateLimiter || $hasLoginThrottling);
         $this->checkApiRoutes($report, $apiRoutes, $hasRateLimiter);
     }
 
@@ -108,7 +109,7 @@ final class RateLimiterAnalyzer implements AnalyzerInterface
                 foreach ($patterns as $pattern) {
                     if (stripos($route, $pattern) !== false) {
                         $matches[] = [
-                            'file' => 'src/Controller/' . $file->getRelativePathname(),
+                            'file' => 'src/Controller/' . str_replace('\\', '/', $file->getRelativePathname()),
                             'route' => $route,
                         ];
                     }
@@ -137,8 +138,8 @@ final class RateLimiterAnalyzer implements AnalyzerInterface
         }
 
         // Verifier si le controller utilise directement un rate limiter via injection.
-        $loginRoutes = array_filter($loginRoutes, fn (array $r) => !$this->controllerUsesRateLimiter($r['file']));
-        if (empty($loginRoutes)) {
+        $loginRoutes = array_values(array_filter($loginRoutes, fn (array $r) => !$this->controllerUsesRateLimiter($r['file'])));
+        if ($loginRoutes === []) {
             return;
         }
 
@@ -183,9 +184,14 @@ final class RateLimiterAnalyzer implements AnalyzerInterface
             return;
         }
 
+        // Verifier si le projet utilise un rate limiter quelque part (EventSubscriber, service, etc.).
+        if ($this->hasProjectRateLimiter()) {
+            return;
+        }
+
         // Verifier si les controllers utilisent directement un rate limiter via injection.
-        $apiRoutes = array_filter($apiRoutes, fn (array $r) => !$this->controllerUsesRateLimiter($r['file']));
-        if (empty($apiRoutes)) {
+        $apiRoutes = array_values(array_filter($apiRoutes, fn (array $r) => !$this->controllerUsesRateLimiter($r['file'])));
+        if ($apiRoutes === []) {
             return;
         }
 
@@ -211,6 +217,59 @@ final class RateLimiterAnalyzer implements AnalyzerInterface
             docUrl: 'https://symfony.com/doc/current/rate_limiter.html',
             estimatedFixMinutes: 20,
         ));
+    }
+
+    /**
+     * Verifie si login_throttling est configure dans security.yaml.
+     * login_throttling protege les routes de login au niveau du firewall Symfony.
+     */
+    private function hasLoginThrottling(): bool
+    {
+        $config = $this->configReader->read('config/packages/security.yaml');
+
+        if ($config === null) {
+            return false;
+        }
+
+        $firewalls = $config['security']['firewalls'] ?? [];
+
+        if (!is_array($firewalls)) {
+            return false;
+        }
+
+        foreach ($firewalls as $firewall) {
+            if (is_array($firewall) && isset($firewall['login_throttling'])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Verifie si le projet utilise un rate limiter dans un service, EventSubscriber ou listener.
+     */
+    private function hasProjectRateLimiter(): bool
+    {
+        $srcDir = $this->projectPath . '/src';
+
+        if (!is_dir($srcDir)) {
+            return false;
+        }
+
+        $finder = new Finder();
+        $finder->files()->name('*.php')->in($srcDir);
+
+        foreach ($finder as $file) {
+            $content = $file->getContents();
+
+            if (str_contains($content, 'RateLimiterFactory')
+                || str_contains($content, '#[RateLimit')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

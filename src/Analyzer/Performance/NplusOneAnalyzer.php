@@ -20,6 +20,9 @@ final class NplusOneAnalyzer implements AnalyzerInterface
 {
     private const TEMPLATES_DIR = '/templates';
 
+    /** @var list<string>|null */
+    private ?array $preloadedRelations = null;
+
     public function __construct(
         private readonly string $projectPath,
     ) {}
@@ -35,7 +38,7 @@ final class NplusOneAnalyzer implements AnalyzerInterface
         $finder->files()->name('*.twig')->in($this->projectPath . self::TEMPLATES_DIR);
 
         foreach ($finder as $file) {
-            $this->analyzeFile($file->getRealPath(), $file->getRelativePathname(), $report);
+            $this->analyzeFile($file->getRealPath(), str_replace('\\', '/', $file->getRelativePathname()), $report);
         }
     }
 
@@ -79,9 +82,9 @@ final class NplusOneAnalyzer implements AnalyzerInterface
 
             $pattern = '/\b' . preg_quote($loopVar, '/') . '\.\w+\.\w+/';
 
-            // Support du commentaire {# sf-doctor:ignore #} sur la ligne precedente.
+            // Support du commentaire {# sf-doctor:ignore #} sur la ligne precedente ou courante.
             $prevLine = $lines[$lineNumber - 1] ?? '';
-            if (str_contains($prevLine, 'sf-doctor:ignore')) {
+            if (str_contains($prevLine, 'sf-doctor:ignore') || str_contains($line, 'sf-doctor:ignore')) {
                 continue;
             }
 
@@ -90,6 +93,11 @@ final class NplusOneAnalyzer implements AnalyzerInterface
                 // Ex: "order.customer.name" -> relation = "customer"
                 $parts = explode('.', $accessMatch[0]);
                 $relation = $parts[1] ?? 'relation';
+
+                // Verifier si la relation est deja pre-chargee via JOIN FETCH ou EAGER.
+                if (in_array($relation, $this->getPreloadedRelations(), true)) {
+                    continue;
+                }
 
                 $report->addIssue(new Issue(
                     severity: Severity::WARNING,
@@ -125,5 +133,75 @@ final class NplusOneAnalyzer implements AnalyzerInterface
                 ));
             }
         }
+    }
+
+    /**
+     * Collecte les noms de relations pre-chargees via leftJoin/join dans les fichiers PHP
+     * ou via fetch: EAGER dans les entites Doctrine.
+     *
+     * Detecte les patterns :
+     *   ->leftJoin('alias.relation', 'joinAlias')
+     *   ->join('alias.relation', 'joinAlias')
+     * et en extrait le nom de la relation (ex: "product", "customer", "method").
+     *
+     * @return list<string>
+     */
+    private function getPreloadedRelations(): array
+    {
+        if ($this->preloadedRelations !== null) {
+            return $this->preloadedRelations;
+        }
+
+        $this->preloadedRelations = [];
+
+        // Scan de src/ pour les patterns leftJoin/join qui indiquent un pre-chargement.
+        $srcDir = $this->projectPath . '/src';
+        if (is_dir($srcDir)) {
+            $srcFinder = new Finder();
+            $srcFinder->files()->name('*.php')->in($srcDir);
+
+            foreach ($srcFinder as $file) {
+                $content = $file->getContents();
+
+                // Match: ->leftJoin('alias.relation', ...) ou ->join('alias.relation', ...)
+                if (preg_match_all('/(?:left)?[Jj]oin\s*\(\s*[\'"]\w+\.(\w+)[\'"]/', $content, $matches)) {
+                    foreach ($matches[1] as $rel) {
+                        $this->preloadedRelations[] = $rel;
+                    }
+                }
+            }
+        }
+
+        // Scan des Entites pour fetch: 'EAGER'.
+        $entityDir = $this->projectPath . '/src/Entity';
+        if (is_dir($entityDir)) {
+            $entityFinder = new Finder();
+            $entityFinder->files()->name('*.php')->in($entityDir);
+
+            foreach ($entityFinder as $file) {
+                $content = $file->getContents();
+
+                if (!preg_match("/fetch\s*[:=]\s*['\"]EAGER['\"]/i", $content)) {
+                    continue;
+                }
+
+                $lines = explode("\n", $content);
+
+                foreach ($lines as $i => $line) {
+                    if (!preg_match('/(?:private|protected|public)\s+.*\$(\w+)/', $line, $propMatch)) {
+                        continue;
+                    }
+
+                    $lookback = max(0, $i - 5);
+                    $context = implode("\n", array_slice($lines, $lookback, $i - $lookback));
+
+                    if (preg_match("/fetch\s*[:=]\s*['\"]EAGER['\"]/i", $context)) {
+                        $this->preloadedRelations[] = $propMatch[1];
+                    }
+                }
+            }
+        }
+
+        return $this->preloadedRelations;
     }
 }

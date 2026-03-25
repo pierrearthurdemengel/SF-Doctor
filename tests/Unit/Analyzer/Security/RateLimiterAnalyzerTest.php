@@ -43,10 +43,22 @@ class RateLimiterAnalyzerTest extends TestCase
         return new AuditReport('/fake/project', [Module::SECURITY]);
     }
 
-    private function createAnalyzer(?array $frameworkConfig): RateLimiterAnalyzer
+    private function createAnalyzer(?array $frameworkConfig, ?array $securityConfig = null): RateLimiterAnalyzer
     {
         $configReader = $this->createMock(ConfigReaderInterface::class);
-        $configReader->method('read')->willReturn($frameworkConfig);
+        $configReader->method('read')->willReturnCallback(
+            function (string $path) use ($frameworkConfig, $securityConfig): ?array {
+                if ($path === 'config/packages/framework.yaml') {
+                    return $frameworkConfig;
+                }
+
+                if ($path === 'config/packages/security.yaml') {
+                    return $securityConfig;
+                }
+
+                return null;
+            },
+        );
 
         return new RateLimiterAnalyzer($this->tmpDir, $configReader);
     }
@@ -216,6 +228,66 @@ class RateLimiterAnalyzerTest extends TestCase
 
         $this->assertSame('Rate Limiter Analyzer', $analyzer->getName());
         $this->assertSame(Module::SECURITY, $analyzer->getModule());
+    }
+
+    // --- Test 10 : login_throttling dans security.yaml => pas d'issue login ---
+
+    public function testLoginRouteWithLoginThrottlingNoIssue(): void
+    {
+        file_put_contents(
+            $this->tmpDir . '/src/Controller/SecurityController.php',
+            '<?php
+            class SecurityController {
+                #[Route(\'/login\')]
+                public function login() {}
+            }'
+        );
+
+        $analyzer = $this->createAnalyzer(null, [
+            'security' => [
+                'firewalls' => [
+                    'main' => [
+                        'login_throttling' => ['max_attempts' => 5],
+                    ],
+                ],
+            ],
+        ]);
+        $report = $this->createReport();
+        $analyzer->analyze($report);
+
+        $warnings = $report->getIssuesBySeverity(Severity::WARNING);
+        $this->assertCount(0, $warnings);
+    }
+
+    // --- Test 11 : RateLimiterFactory dans un EventSubscriber => pas d'issue API ---
+
+    public function testApiRouteWithProjectRateLimiterNoIssue(): void
+    {
+        file_put_contents(
+            $this->tmpDir . '/src/Controller/ApiController.php',
+            '<?php
+            class ApiController {
+                #[Route(\'/api/products\')]
+                public function list() {}
+            }'
+        );
+
+        mkdir($this->tmpDir . '/src/EventSubscriber', 0777, true);
+        file_put_contents(
+            $this->tmpDir . '/src/EventSubscriber/RateLimitSubscriber.php',
+            '<?php
+            use Symfony\Component\RateLimiter\RateLimiterFactory;
+            class RateLimitSubscriber {
+                public function __construct(private RateLimiterFactory $limiter) {}
+            }'
+        );
+
+        $analyzer = $this->createAnalyzer(null);
+        $report = $this->createReport();
+        $analyzer->analyze($report);
+
+        $suggestions = $report->getIssuesBySeverity(Severity::SUGGESTION);
+        $this->assertCount(0, $suggestions);
     }
 
     // --- Test 9 : supports retourne toujours true ---

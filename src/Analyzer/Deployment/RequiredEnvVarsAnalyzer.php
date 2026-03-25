@@ -67,8 +67,10 @@ final class RequiredEnvVarsAnalyzer implements AnalyzerInterface
             }
         }
 
-        $this->checkMissingProdVars($report, $baseVars, $prodVars);
-        $this->checkPlaceholderValues($report, $baseVars, $prodVars);
+        $isPaas = $this->isPaasHosting();
+
+        $this->checkMissingProdVars($report, $baseVars, $prodVars, $isPaas);
+        $this->checkPlaceholderValues($report, $baseVars, $prodVars, $isPaas);
     }
 
     public function getName(): string
@@ -96,8 +98,29 @@ final class RequiredEnvVarsAnalyzer implements AnalyzerInterface
      * @param array<string, string> $baseVars
      * @param array<string, string> $prodVars
      */
-    private function checkMissingProdVars(AuditReport $report, array $baseVars, array $prodVars): void
+    /**
+     * Detecte si le projet est deploye sur un PaaS (Scalingo, Heroku, etc.).
+     * Ces plateformes injectent les variables d'environnement via leur dashboard,
+     * ce qui rend normal l'absence de ces variables dans .env.prod.
+     */
+    private function isPaasHosting(): bool
     {
+        return file_exists($this->projectPath . '/Procfile')
+            || file_exists($this->projectPath . '/scalingo.json')
+            || file_exists($this->projectPath . '/app.json');
+    }
+
+    /**
+     * @param array<string, string> $baseVars
+     * @param array<string, string> $prodVars
+     */
+    private function checkMissingProdVars(AuditReport $report, array $baseVars, array $prodVars, bool $isPaas): void
+    {
+        // Sur un PaaS, les variables sont injectees par la plateforme : pas d'alerte.
+        if ($isPaas) {
+            return;
+        }
+
         $missingVars = [];
 
         foreach ($baseVars as $key => $value) {
@@ -152,13 +175,18 @@ final class RequiredEnvVarsAnalyzer implements AnalyzerInterface
      * @param array<string, string> $baseVars
      * @param array<string, string> $prodVars
      */
-    private function checkPlaceholderValues(AuditReport $report, array $baseVars, array $prodVars): void
+    /**
+     * @param array<string, string> $baseVars
+     * @param array<string, string> $prodVars
+     */
+    private function checkPlaceholderValues(AuditReport $report, array $baseVars, array $prodVars, bool $isPaas): void
     {
-        // Fusionner les deux fichiers, .env.prod prenant le dessus.
-        $allVars = array_merge($baseVars, $prodVars);
+        // Sur un PaaS, les placeholders dans .env sont normaux (valeurs de dev),
+        // seuls les placeholders dans .env.prod sont problematiques.
+        $varsToCheck = $isPaas ? $prodVars : array_merge($baseVars, $prodVars);
         $placeholderVars = [];
 
-        foreach ($allVars as $key => $value) {
+        foreach ($varsToCheck as $key => $value) {
             $normalizedValue = strtolower(trim($value));
 
             foreach (self::PLACEHOLDER_VALUES as $placeholder) {

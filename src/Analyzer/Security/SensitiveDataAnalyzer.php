@@ -53,7 +53,7 @@ final class SensitiveDataAnalyzer implements AnalyzerInterface
 
         foreach ($finder as $file) {
             $content = $file->getContents();
-            $relativePath = 'src/Entity/' . $file->getRelativePathname();
+            $relativePath = 'src/Entity/' . str_replace('\\', '/', $file->getRelativePathname());
 
             $this->checkSensitiveProperties($report, $content, $relativePath, $file->getFilename());
         }

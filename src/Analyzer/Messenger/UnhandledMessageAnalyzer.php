@@ -122,9 +122,11 @@ final class UnhandledMessageAnalyzer implements AnalyzerInterface
             }
 
             $className = $matches[1];
+            $realPath = str_replace('\\', '/', $file->getRealPath());
+            $normalizedDir = str_replace('\\', '/', $messageDir);
             $relativePath = 'src/Message/' . ltrim(
-                str_replace($messageDir, '', $file->getRealPath()),
-                '/\\',
+                str_replace($normalizedDir, '', $realPath),
+                '/',
             );
 
             $classes[$className] = $relativePath;

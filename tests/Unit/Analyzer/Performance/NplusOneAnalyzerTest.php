@@ -219,6 +219,76 @@ final class NplusOneAnalyzerTest extends TestCase
         );
     }
 
+    // --- Pre-loaded relations (JOIN FETCH / EAGER) ---
+
+    public function testNoIssueWhenRelationIsPreloadedInRepository(): void
+    {
+        mkdir($this->tmpDir . '/src/Repository', 0777, true);
+        file_put_contents($this->tmpDir . '/src/Repository/OrderRepository.php', <<<'PHP'
+            <?php
+            class OrderRepository {
+                public function findAllWithCustomer(): array
+                {
+                    return $this->createQueryBuilder('o')
+                        ->leftJoin('o.customer', 'c')
+                        ->addSelect('c')
+                        ->getQuery()
+                        ->getResult();
+                }
+            }
+            PHP
+        );
+
+        $this->writeTwig('index.html.twig', <<<TWIG
+            {% for order in orders %}
+                {{ order.customer.name }}
+            {% endfor %}
+            TWIG
+        );
+
+        $report = $this->runAnalyzer();
+
+        $this->assertCount(0, $report->getIssues());
+    }
+
+    public function testNoIssueWhenRelationIsEagerLoaded(): void
+    {
+        mkdir($this->tmpDir . '/src/Entity', 0777, true);
+        file_put_contents($this->tmpDir . '/src/Entity/Order.php', <<<'PHP'
+            <?php
+            class Order {
+                #[ORM\ManyToOne(targetEntity: Customer::class, fetch: 'EAGER')]
+                private ?Customer $customer = null;
+            }
+            PHP
+        );
+
+        $this->writeTwig('index.html.twig', <<<TWIG
+            {% for order in orders %}
+                {{ order.customer.name }}
+            {% endfor %}
+            TWIG
+        );
+
+        $report = $this->runAnalyzer();
+
+        $this->assertCount(0, $report->getIssues());
+    }
+
+    public function testInlineIgnoreCommentSkipsLine(): void
+    {
+        $this->writeTwig('index.html.twig', <<<TWIG
+            {% for order in orders %}
+                {{ order.customer.name }} {# sf-doctor:ignore #}
+            {% endfor %}
+            TWIG
+        );
+
+        $report = $this->runAnalyzer();
+
+        $this->assertCount(0, $report->getIssues());
+    }
+
     // --- Enrichissement des champs ---
 
     public function testNplusOneIssueHasEnrichmentFields(): void

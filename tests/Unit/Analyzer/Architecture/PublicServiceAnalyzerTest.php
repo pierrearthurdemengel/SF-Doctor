@@ -57,7 +57,7 @@ final class PublicServiceAnalyzerTest extends TestCase
     {
         $analyzer = $this->createAnalyzer([
             'services' => [
-                'App\\Service\\PaymentGateway' => [
+                'App\\Service\\OrderExporter' => [
                     'public' => true,
                     'arguments' => ['@doctrine.orm.entity_manager'],
                 ],
@@ -68,7 +68,7 @@ final class PublicServiceAnalyzerTest extends TestCase
 
         $warnings = $report->getIssuesBySeverity(Severity::WARNING);
         $this->assertCount(1, $warnings);
-        $this->assertStringContainsString('PaymentGateway', $warnings[0]->getMessage());
+        $this->assertStringContainsString('OrderExporter', $warnings[0]->getMessage());
     }
 
     // ---------------------------------------------------------------

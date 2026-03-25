@@ -108,7 +108,7 @@ final class CsrfAnalyzer implements AnalyzerInterface
                 continue;
             }
 
-            $relativePath = 'src/Form/' . $file->getRelativePathname();
+            $relativePath = 'src/Form/' . str_replace('\\', '/', $file->getRelativePathname());
 
             $report->addIssue(new Issue(
                 severity: Severity::WARNING,

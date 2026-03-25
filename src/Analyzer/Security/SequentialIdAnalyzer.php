@@ -51,9 +51,11 @@ final class SequentialIdAnalyzer implements AnalyzerInterface
                 continue;
             }
 
+            $realPath = str_replace('\\', '/', $file->getRealPath());
+            $normalizedDir = str_replace('\\', '/', $entityDir);
             $relativePath = 'src/Entity/' . ltrim(
-                str_replace($entityDir, '', $file->getRealPath()),
-                '/\\',
+                str_replace($normalizedDir, '', $realPath),
+                '/',
             );
 
             $this->checkSequentialId($report, $content, $relativePath, $file->getFilename());

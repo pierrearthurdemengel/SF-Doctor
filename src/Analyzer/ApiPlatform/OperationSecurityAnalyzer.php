@@ -77,9 +77,11 @@ final class OperationSecurityAnalyzer implements AnalyzerInterface
                     continue;
                 }
 
+                $realPath = str_replace('\\', '/', $file->getRealPath());
+                $normalizedDir = str_replace('\\', '/', $dir);
                 $relativePath = $relativePrefix . ltrim(
-                    str_replace($dir, '', $file->getRealPath()),
-                    '/\\',
+                    str_replace($normalizedDir, '', $realPath),
+                    '/',
                 );
 
                 $this->checkOperationSecurity($report, $content, $relativePath, $file->getFilename());

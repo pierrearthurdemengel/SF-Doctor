@@ -56,11 +56,11 @@ final class ValidationAnalyzer implements AnalyzerInterface
                     continue;
                 }
 
-                $relativePath = str_replace(
-                    [$this->projectPath . '/', $this->projectPath . '\\'],
+                $relativePath = str_replace('\\', '/', str_replace(
+                    str_replace('\\', '/', $this->projectPath) . '/',
                     '',
-                    $file->getRealPath(),
-                );
+                    str_replace('\\', '/', $file->getRealPath()),
+                ));
 
                 $this->checkWriteOperationsWithoutValidation($report, $content, $relativePath);
                 $this->checkNotNullColumnsWithoutNotBlank($report, $content, $relativePath);

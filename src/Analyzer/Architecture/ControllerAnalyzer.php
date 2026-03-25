@@ -55,7 +55,7 @@ final class ControllerAnalyzer implements AnalyzerInterface
 
         foreach ($finder as $file) {
             $content = $file->getContents();
-            $relativePath = 'src/Controller/' . $file->getRelativePathname();
+            $relativePath = 'src/Controller/' . str_replace('\\', '/', $file->getRelativePathname());
 
             $this->checkQueryBuilderUsage($report, $content, $file->getFilename(), $relativePath);
             $this->checkEntityManagerUsage($report, $content, $file->getFilename(), $relativePath);
