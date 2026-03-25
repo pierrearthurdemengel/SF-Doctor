@@ -95,7 +95,7 @@ final class FixCommand extends Command
             $io->text('Suggestion : ' . $issue->getSuggestion());
             $io->newLine();
             $io->text('Code correctif :');
-            $io->block($issue->getFixCode(), null, 'fg=green');
+            $io->block($issue->getFixCode() ?? '', null, 'fg=green');
 
             if ($dryRun) {
                 $io->note('Mode dry-run : correction non appliquee');

@@ -76,7 +76,7 @@ final class MigrationStatusAnalyzer implements AnalyzerInterface
         }
 
         // If we can't determine executed migrations, check for old migration files
-        if (empty($executedMigrations) && count($migrationFiles) > 0) {
+        if (empty($executedMigrations) && $migrationFiles !== []) {
             $oldMigrations = $this->findOldMigrations($migrationFiles);
 
             if (count($oldMigrations) > 0) {
