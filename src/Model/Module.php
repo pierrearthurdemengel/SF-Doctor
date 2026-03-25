@@ -12,4 +12,11 @@ enum Module: string
     case ARCHITECTURE = 'architecture';   // Controllers propres, injection, voters, services
     case PERFORMANCE = 'performance';     // Eager loading, cache, messenger, N+1
     case UPGRADE = 'upgrade';             // Migration entre versions Symfony (payant)
+    case DOCTRINE = 'doctrine';           // Relations, index, cascade, repositories
+    case MESSENGER = 'messenger';         // Messages, handlers, transports, signing
+    case API_PLATFORM = 'api-platform';   // Operations, serialisation, pagination, validation
+    case MIGRATION = 'migration';         // Deprecations, bundles, version PHP
+    case TWIG = 'twig';                   // XSS, raw filter, logique metier dans les templates
+    case DEPLOYMENT = 'deployment';       // Migrations BDD, variables d'env, assets, logs
+    case TESTS = 'tests';                 // Couverture, tests securite, fixtures
 }

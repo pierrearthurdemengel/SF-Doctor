@@ -62,6 +62,8 @@ class ProjectContextDetector
     /**
      * Lit la liste des packages declares dans composer.json (require + require-dev).
      * Retourne un tableau de noms de packages en minuscules.
+     *
+     * @return list<string>
      */
     private function readInstalledPackages(): array
     {
@@ -84,11 +86,20 @@ class ProjectContextDetector
         $require = array_keys($data['require'] ?? []);
         $requireDev = array_keys($data['require-dev'] ?? []);
 
-        return array_map('strtolower', array_merge($require, $requireDev));
+        $merged = array_merge($require, $requireDev);
+        $packages = [];
+        foreach ($merged as $name) {
+            $packages[] = strtolower((string) $name);
+        }
+
+        return $packages;
     }
 
     /**
      * Transforme la liste de packages en tableau de flags booleens.
+     *
+     * @param list<string> $packages
+     * @return array<string, bool>
      */
     private function resolveFlags(array $packages): array
     {

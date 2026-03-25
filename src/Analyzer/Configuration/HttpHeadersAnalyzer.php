@@ -56,6 +56,8 @@ class HttpHeadersAnalyzer implements AnalyzerInterface
     /**
      * Verifie la presence du header X-Frame-Options.
      * Protege contre le clickjacking.
+     *
+     * @param array<string, mixed> $headers
      */
     private function checkXFrameOptions(array $headers, AuditReport $report): void
     {
@@ -81,6 +83,8 @@ class HttpHeadersAnalyzer implements AnalyzerInterface
     /**
      * Verifie la presence du header X-Content-Type-Options.
      * Protege contre le MIME sniffing.
+     *
+     * @param array<string, mixed> $headers
      */
     private function checkXContentTypeOptions(array $headers, AuditReport $report): void
     {
@@ -106,6 +110,8 @@ class HttpHeadersAnalyzer implements AnalyzerInterface
     /**
      * Verifie la presence d'une politique Content-Security-Policy.
      * Reduit la surface d'attaque XSS.
+     *
+     * @param array<string, mixed> $headers
      */
     private function checkContentSecurityPolicy(array $headers, AuditReport $report): void
     {
@@ -131,6 +137,8 @@ class HttpHeadersAnalyzer implements AnalyzerInterface
     /**
      * Recherche un header par nom, insensible a la casse.
      * Retourne la cle trouvee dans le tableau ou null si absent.
+     *
+     * @param array<string, mixed> $headers
      */
     private function findHeader(array $headers, string $name): ?string
     {

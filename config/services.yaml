@@ -139,5 +139,237 @@ services:
         tags:
             - { name: sf_doctor.analyzer, module: security }
 
+    PierreArthur\SfDoctor\Analyzer\Configuration\ProductionReadinessAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: security }
+
+    # --- Analyzers Security (suite) ---
+
+    PierreArthur\SfDoctor\Analyzer\Security\RememberMeAnalyzer:
+        autowire: true
+        tags:
+            - { name: sf_doctor.analyzer, module: security }
+
+    PierreArthur\SfDoctor\Analyzer\Security\SensitiveDataAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: security }
+
+    PierreArthur\SfDoctor\Analyzer\Security\RateLimiterAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+            $configReader: '@PierreArthur\SfDoctor\Config\YamlConfigReader'
+        tags:
+            - { name: sf_doctor.analyzer, module: security }
+
+    PierreArthur\SfDoctor\Analyzer\Security\HttpsAnalyzer:
+        autowire: true
+        tags:
+            - { name: sf_doctor.analyzer, module: security }
+
+    PierreArthur\SfDoctor\Analyzer\Security\CorsAnalyzer:
+        autowire: true
+        tags:
+            - { name: sf_doctor.analyzer, module: security }
+
+    PierreArthur\SfDoctor\Analyzer\Security\MassAssignmentAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: security }
+
+    PierreArthur\SfDoctor\Analyzer\Security\HttpMethodOverrideAnalyzer:
+        autowire: true
+        tags:
+            - { name: sf_doctor.analyzer, module: security }
+
+    PierreArthur\SfDoctor\Analyzer\Security\SymfonyVersionAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: security }
+
+    PierreArthur\SfDoctor\Analyzer\Security\ExposedDebugEndpointsAnalyzer:
+        autowire: true
+        tags:
+            - { name: sf_doctor.analyzer, module: security }
+
+    PierreArthur\SfDoctor\Analyzer\Security\PublicSensitiveFilesAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: security }
+
+    # --- Analyzers Architecture (suite) ---
+
+    PierreArthur\SfDoctor\Analyzer\Architecture\ServiceInjectionAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: architecture }
+
+    PierreArthur\SfDoctor\Analyzer\Architecture\HeavyConstructorAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: architecture }
+
+    PierreArthur\SfDoctor\Analyzer\Architecture\VoterUsageAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: architecture }
+
+    PierreArthur\SfDoctor\Analyzer\Architecture\PublicServiceAnalyzer:
+        autowire: true
+        tags:
+            - { name: sf_doctor.analyzer, module: architecture }
+
+    PierreArthur\SfDoctor\Analyzer\Architecture\EventSubscriberAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: architecture }
+
+    # --- Analyzers Doctrine ---
+
+    PierreArthur\SfDoctor\Analyzer\Doctrine\EagerLoadingAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: doctrine }
+
+    PierreArthur\SfDoctor\Analyzer\Doctrine\CascadeRiskAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: doctrine }
+
+    PierreArthur\SfDoctor\Analyzer\Doctrine\MissingIndexAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: doctrine }
+
+    PierreArthur\SfDoctor\Analyzer\Doctrine\RepositoryPatternAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: doctrine }
+
+    # --- Analyzers Messenger ---
+
+    PierreArthur\SfDoctor\Analyzer\Messenger\MessengerTransportAnalyzer:
+        autowire: true
+        tags:
+            - { name: sf_doctor.analyzer, module: messenger }
+
+    PierreArthur\SfDoctor\Analyzer\Messenger\UnhandledMessageAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: messenger }
+
+    # --- Analyzers API Platform ---
+
+    PierreArthur\SfDoctor\Analyzer\ApiPlatform\OperationSecurityAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: api-platform }
+
+    PierreArthur\SfDoctor\Analyzer\ApiPlatform\SerializationGroupAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: api-platform }
+
+    PierreArthur\SfDoctor\Analyzer\ApiPlatform\PaginationAnalyzer:
+        autowire: true
+        tags:
+            - { name: sf_doctor.analyzer, module: api-platform }
+
+    # --- Analyzers Migration ---
+
+    PierreArthur\SfDoctor\Analyzer\Migration\BundleDependencyAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: migration }
+
+    PierreArthur\SfDoctor\Analyzer\Migration\DeprecationUsageAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: migration }
+
+    PierreArthur\SfDoctor\Analyzer\Migration\PhpVersionAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: migration }
+
+    # --- Analyzers Twig ---
+
+    PierreArthur\SfDoctor\Analyzer\Twig\TwigRawFilterAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: twig }
+
+    PierreArthur\SfDoctor\Analyzer\Twig\BusinessLogicInTwigAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: twig }
+
+    # --- Analyzers Deployment ---
+
+    PierreArthur\SfDoctor\Analyzer\Deployment\AssetsAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: deployment }
+
+    PierreArthur\SfDoctor\Analyzer\Deployment\RequiredEnvVarsAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: deployment }
+
+    # --- Analyzers Tests ---
+
+    PierreArthur\SfDoctor\Analyzer\Tests\TestCoverageAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: tests }
+
+    PierreArthur\SfDoctor\Analyzer\Tests\SecurityTestAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: tests }
+
+    # --- Commande Install Hooks ---
+
+    PierreArthur\SfDoctor\Command\InstallHooksCommand:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags: ['console.command']
+
+    # --- Reporter SARIF ---
+
+    PierreArthur\SfDoctor\Report\SarifReporter:
+        tags:
+            - { name: sf_doctor.reporter }
+
+    # --- Score Engine ---
+
+    PierreArthur\SfDoctor\Score\ScoreEngine: ~
+
     PierreArthur\SfDoctor\Config\ConfigReaderInterface:
         alias: PierreArthur\SfDoctor\Config\YamlConfigReader
