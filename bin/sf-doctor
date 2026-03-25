@@ -3,21 +3,75 @@
 
 require __DIR__ . '/../vendor/autoload.php';
 
+use PierreArthur\SfDoctor\Analyzer\ApiPlatform\OperationSecurityAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\ApiPlatform\PaginationAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\ApiPlatform\SerializationGroupAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\ApiPlatform\ValidationAnalyzer;
 use PierreArthur\SfDoctor\Analyzer\Architecture\ControllerAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Architecture\EventSubscriberAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Architecture\HeavyConstructorAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Architecture\InterLayerCoherenceAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Architecture\PublicServiceAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Architecture\ServiceInjectionAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Architecture\VoterUsageAnalyzer;
 use PierreArthur\SfDoctor\Analyzer\Configuration\DebugModeAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Configuration\HttpHeadersAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Configuration\MailerAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Configuration\ProductionReadinessAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Configuration\ProfilerAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Deployment\AssetsAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Deployment\LogAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Deployment\MigrationStatusAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Deployment\RequiredEnvVarsAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Doctrine\CascadeRiskAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Doctrine\EagerLoadingAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Doctrine\LazyGhostObjectAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Doctrine\MissingIndexAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Doctrine\RepositoryPatternAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Messenger\MessengerSigningAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Messenger\MessengerTransportAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Messenger\UnhandledMessageAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Messenger\UnserializableMessageAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Migration\BundleDependencyAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Migration\DeprecationUsageAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Migration\PhpVersionAnalyzer;
 use PierreArthur\SfDoctor\Analyzer\Performance\NplusOneAnalyzer;
 use PierreArthur\SfDoctor\Analyzer\Security\AccessControlAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Security\BundleRouteExposureAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Security\CorsAnalyzer;
 use PierreArthur\SfDoctor\Analyzer\Security\CsrfAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Security\ExposedDebugEndpointsAnalyzer;
 use PierreArthur\SfDoctor\Analyzer\Security\FirewallAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Security\HttpMethodOverrideAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Security\HttpsAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Security\MassAssignmentAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Security\PublicSensitiveFilesAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Security\RateLimiterAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Security\RememberMeAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Security\SecretsAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Security\SensitiveDataAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Security\SequentialIdAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Security\SymfonyVersionAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Tests\SecurityTestAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Tests\TestCoverageAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Tests\TestFixtureAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Twig\BusinessLogicInTwigAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Twig\TwigRawFilterAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\Twig\TwigSrcdocAnalyzer;
+use PierreArthur\SfDoctor\Cache\ResultCache;
 use PierreArthur\SfDoctor\Command\AuditCommand;
 use PierreArthur\SfDoctor\Config\NullParameterResolver;
 use PierreArthur\SfDoctor\Config\YamlConfigReader;
 use PierreArthur\SfDoctor\Report\ConsoleReporter;
 use PierreArthur\SfDoctor\Report\JsonReporter;
 use PierreArthur\SfDoctor\Report\PdfReporter;
+use PierreArthur\SfDoctor\Report\SarifReporter;
+use PierreArthur\SfDoctor\Serializer\AuditReportNormalizer;
+use PierreArthur\SfDoctor\Serializer\IssueNormalizer;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Output\ConsoleOutput;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 // Lecture du chemin du projet depuis le premier argument CLI.
 // Si aucun argument n'est passe, on audite le repertoire courant.
@@ -36,41 +90,111 @@ if (file_exists($targetAutoloader)) {
     require $targetAutoloader;
 }
 
-$configReader        = new YamlConfigReader($projectPath);
-$parameterResolver   = new NullParameterResolver();
-$output              = new ConsoleOutput();
+$configReader      = new YamlConfigReader($projectPath);
+$parameterResolver = new NullParameterResolver();
+$output            = new ConsoleOutput();
+$dispatcher        = new EventDispatcher();
+$cache             = new ResultCache();
 
-// Determination du format de sortie pour le PdfReporter.
-// On cherche --format=pdf dans les arguments pour construire le bon reporter.
-$format = 'console';
-foreach ($argv as $arg) {
-    if (str_starts_with($arg, '--format=')) {
-        $format = substr($arg, strlen('--format='));
-    }
-}
+// Reporters
+$issueNormalizer       = new IssueNormalizer();
+$auditReportNormalizer = new AuditReportNormalizer();
+$auditReportNormalizer->setNormalizer(new \Symfony\Component\Serializer\Serializer([$issueNormalizer, $auditReportNormalizer]));
 
 $pdfPath = $projectPath . '/sf-doctor-report.pdf';
 
+$reporters = [
+    new ConsoleReporter(),
+    new JsonReporter($auditReportNormalizer),
+    new PdfReporter($pdfPath),
+    new SarifReporter(),
+];
+
+// Analyzers - tous les 55
 $analyzers = [
+    // Security (16)
     new FirewallAnalyzer($configReader, $parameterResolver),
     new AccessControlAnalyzer($configReader, $parameterResolver),
     new CsrfAnalyzer($projectPath, $configReader, $parameterResolver),
+    new SecretsAnalyzer($projectPath),
+    new SensitiveDataAnalyzer($projectPath),
+    new RememberMeAnalyzer($configReader),
+    new SymfonyVersionAnalyzer($projectPath),
+    new CorsAnalyzer($configReader),
+    new HttpsAnalyzer($configReader),
+    new HttpMethodOverrideAnalyzer($configReader),
+    new MassAssignmentAnalyzer($projectPath),
+    new RateLimiterAnalyzer($projectPath, $configReader),
+    new BundleRouteExposureAnalyzer($projectPath, $configReader),
+    new ExposedDebugEndpointsAnalyzer($configReader),
+    new PublicSensitiveFilesAnalyzer($projectPath),
+    new SequentialIdAnalyzer($projectPath),
+
+    // Architecture (7)
     new ControllerAnalyzer($projectPath),
+    new ServiceInjectionAnalyzer($projectPath),
+    new HeavyConstructorAnalyzer($projectPath),
+    new VoterUsageAnalyzer($projectPath),
+    new PublicServiceAnalyzer($configReader),
+    new EventSubscriberAnalyzer($projectPath),
+    new InterLayerCoherenceAnalyzer($projectPath),
+
+    // Configuration (5)
     new DebugModeAnalyzer($projectPath),
+    new ProfilerAnalyzer($configReader),
+    new MailerAnalyzer($configReader),
+    new HttpHeadersAnalyzer($configReader),
+    new ProductionReadinessAnalyzer($projectPath),
+
+    // Performance (1)
     new NplusOneAnalyzer($projectPath),
+
+    // Doctrine (5)
+    new EagerLoadingAnalyzer($projectPath),
+    new MissingIndexAnalyzer($projectPath),
+    new CascadeRiskAnalyzer($projectPath),
+    new RepositoryPatternAnalyzer($projectPath),
+    new LazyGhostObjectAnalyzer($configReader, $projectPath),
+
+    // Messenger (4)
+    new UnhandledMessageAnalyzer($projectPath),
+    new UnserializableMessageAnalyzer($projectPath),
+    new MessengerTransportAnalyzer($configReader),
+    new MessengerSigningAnalyzer($configReader, $projectPath),
+
+    // API Platform (4)
+    new OperationSecurityAnalyzer($projectPath),
+    new SerializationGroupAnalyzer($projectPath),
+    new PaginationAnalyzer($configReader),
+    new ValidationAnalyzer($projectPath),
+
+    // Twig (3)
+    new TwigRawFilterAnalyzer($projectPath),
+    new TwigSrcdocAnalyzer($projectPath, $configReader),
+    new BusinessLogicInTwigAnalyzer($projectPath),
+
+    // Deployment (4)
+    new MigrationStatusAnalyzer($projectPath),
+    new RequiredEnvVarsAnalyzer($projectPath),
+    new AssetsAnalyzer($projectPath),
+    new LogAnalyzer($projectPath),
+
+    // Migration (3)
+    new DeprecationUsageAnalyzer($projectPath),
+    new BundleDependencyAnalyzer($projectPath),
+    new PhpVersionAnalyzer($projectPath),
+
+    // Tests (3)
+    new TestCoverageAnalyzer($projectPath),
+    new SecurityTestAnalyzer($projectPath),
+    new TestFixtureAnalyzer($projectPath),
 ];
 
-$reporters = [
-    new ConsoleReporter($output),
-    new JsonReporter($output),
-    new PdfReporter($pdfPath),
-];
-
-$application = new Application('SF Doctor', '1.0.0');
-$application->add(new AuditCommand($analyzers, $reporters, $projectPath, $parameterResolver));
+$application = new Application('SF Doctor', '3.2.0');
+$application->add(new AuditCommand($analyzers, $reporters, $projectPath, $parameterResolver, $dispatcher, $cache));
 $application->setDefaultCommand('sf-doctor:audit', true);
+
 // On retire le chemin du projet des arguments passes a la Console.
-// La commande recoit deja $projectPath via son constructeur.
 $filteredArgv = array_values(array_filter(
     $argv,
     fn (string $arg): bool => $arg === $argv[0] || str_starts_with($arg, '-'),
