@@ -373,6 +373,18 @@ services:
         tags:
             - { name: sf_doctor.analyzer, module: deployment }
 
+    PierreArthur\SfDoctor\Analyzer\Deployment\MigrationStatusAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: deployment }
+
+    PierreArthur\SfDoctor\Analyzer\Deployment\LogAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: deployment }
+
     # --- Analyzers Tests ---
 
     PierreArthur\SfDoctor\Analyzer\Tests\TestCoverageAnalyzer:
