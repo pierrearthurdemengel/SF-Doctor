@@ -443,5 +443,17 @@ services:
         tags:
             - { name: sf_doctor.analyzer, module: architecture }
 
+    # --- TechnicalDebtCalculator + FullAuditCommand (Phase 32) ---
+
+    PierreArthur\SfDoctor\Score\TechnicalDebtCalculator: ~
+
+    PierreArthur\SfDoctor\Command\FullAuditCommand:
+        arguments:
+            $analyzers: !tagged_iterator sf_doctor.analyzer
+            $reporters: !tagged_iterator sf_doctor.reporter
+            $projectPath: '%kernel.project_dir%'
+            $parameterResolver: '@PierreArthur\SfDoctor\Config\ContainerParameterResolver'
+        tags: ['console.command']
+
     PierreArthur\SfDoctor\Config\ConfigReaderInterface:
         alias: PierreArthur\SfDoctor\Config\YamlConfigReader
