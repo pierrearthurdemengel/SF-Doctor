@@ -1,0 +1,115 @@
+name: 'SF Doctor - Symfony Audit'
+description: 'Analyse statique de securite et qualite pour projets Symfony'
+author: 'Pierre-Arthur'
+
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  format:
+    description: 'Format de sortie (console, json, sarif)'
+    required: false
+    default: 'sarif'
+  modules:
+    description: 'Modules a auditer (--all par defaut). Ex: --security --doctrine'
+    required: false
+    default: '--all'
+  fail-on-critical:
+    description: 'Echoue si des issues CRITICAL sont detectees'
+    required: false
+    default: 'true'
+  upload-sarif:
+    description: 'Upload le rapport SARIF vers GitHub Code Scanning'
+    required: false
+    default: 'true'
+  php-version:
+    description: 'Version PHP a utiliser'
+    required: false
+    default: '8.3'
+  baseline:
+    description: 'Chemin vers un fichier baseline pour le mode diff'
+    required: false
+    default: ''
+
+outputs:
+  score:
+    description: 'Score global du projet (0-100)'
+    value: ${{ steps.audit.outputs.score }}
+  issues-count:
+    description: 'Nombre total d issues detectees'
+    value: ${{ steps.audit.outputs.issues_count }}
+  critical-count:
+    description: 'Nombre d issues CRITICAL'
+    value: ${{ steps.audit.outputs.critical_count }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ inputs.php-version }}
+        extensions: mbstring, xml, ctype, iconv
+        tools: composer:v2
+
+    - name: Install SF Doctor
+      shell: bash
+      run: composer require --dev pierre-arthur/sf-doctor:* --no-interaction --no-progress
+
+    - name: Run SF Doctor audit
+      id: audit
+      shell: bash
+      run: |
+        ARGS="${{ inputs.modules }}"
+
+        if [ "${{ inputs.format }}" = "sarif" ]; then
+          ARGS="$ARGS --format=sarif"
+        elif [ "${{ inputs.format }}" = "json" ]; then
+          ARGS="$ARGS --format=json"
+        fi
+
+        if [ -n "${{ inputs.baseline }}" ]; then
+          ARGS="$ARGS --diff=${{ inputs.baseline }}"
+        fi
+
+        # Run audit and capture exit code
+        set +e
+        php vendor/bin/sf-doctor audit $ARGS > sf-doctor-report.sarif 2>&1
+        EXIT_CODE=$?
+        set -e
+
+        # Also run JSON format to extract metrics
+        php vendor/bin/sf-doctor audit --all --format=json > sf-doctor-report.json 2>&1 || true
+
+        # Extract metrics from JSON report
+        if [ -f sf-doctor-report.json ]; then
+          SCORE=$(php -r "\$r=json_decode(file_get_contents('sf-doctor-report.json'),true); echo \$r['global_score'] ?? 'N/A';")
+          ISSUES=$(php -r "\$r=json_decode(file_get_contents('sf-doctor-report.json'),true); echo count(\$r['issues'] ?? []);")
+          CRITICALS=$(php -r "\$r=json_decode(file_get_contents('sf-doctor-report.json'),true); echo count(array_filter(\$r['issues'] ?? [], fn(\$i) => \$i['severity'] === 'critical'));")
+        else
+          SCORE="N/A"
+          ISSUES="0"
+          CRITICALS="0"
+        fi
+
+        echo "score=$SCORE" >> $GITHUB_OUTPUT
+        echo "issues_count=$ISSUES" >> $GITHUB_OUTPUT
+        echo "critical_count=$CRITICALS" >> $GITHUB_OUTPUT
+
+        # Display console output
+        php vendor/bin/sf-doctor audit --all --format=console || true
+
+        # Fail if critical issues and fail-on-critical is true
+        if [ "${{ inputs.fail-on-critical }}" = "true" ] && [ "$EXIT_CODE" != "0" ]; then
+          echo "::error::SF Doctor a detecte des issues CRITICAL. Score: $SCORE/100"
+          exit 1
+        fi
+
+    - name: Upload SARIF to GitHub Code Scanning
+      if: inputs.upload-sarif == 'true' && inputs.format == 'sarif'
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: sf-doctor-report.sarif
+        category: sf-doctor
+      continue-on-error: true
