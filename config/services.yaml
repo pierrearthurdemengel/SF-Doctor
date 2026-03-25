@@ -352,6 +352,13 @@ services:
         tags:
             - { name: sf_doctor.analyzer, module: twig }
 
+    PierreArthur\SfDoctor\Analyzer\Twig\TwigSrcdocAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        autowire: true
+        tags:
+            - { name: sf_doctor.analyzer, module: twig }
+
     # --- Analyzers Deployment ---
 
     PierreArthur\SfDoctor\Analyzer\Deployment\AssetsAnalyzer:
