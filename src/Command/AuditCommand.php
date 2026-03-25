@@ -33,6 +33,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\HandledStamp;
+use Symfony\Component\Yaml\Yaml;
 use PierreArthur\SfDoctor\Analyzer\AnalyzerInterface;
 
 #[AsCommand(
@@ -207,6 +208,9 @@ final class AuditCommand extends Command
                 );
             }
 
+            // Appliquer les regles d'ignore depuis .sf-doctor.yaml
+            $this->applyIgnoreRules($report);
+
             $report->complete();
 
             $workflow->apply($context, AuditWorkflow::TRANSITION_COMPLETE);
@@ -302,6 +306,26 @@ final class AuditCommand extends Command
 
         // Par defaut : tous les modules.
         return Module::cases();
+    }
+
+    /**
+     * Charge et applique les regles d'ignore depuis .sf-doctor.yaml a la racine du projet.
+     */
+    private function applyIgnoreRules(AuditReport $report): void
+    {
+        $ignoreFile = $this->projectPath . '/.sf-doctor.yaml';
+        if (!file_exists($ignoreFile)) {
+            return;
+        }
+
+        $config = Yaml::parseFile($ignoreFile);
+        if (!is_array($config) || !isset($config['ignore']) || !is_array($config['ignore'])) {
+            return;
+        }
+
+        /** @var list<array{analyzer?: string, file?: string, reason?: string}> $rules */
+        $rules = $config['ignore'];
+        $report->filterIgnored($rules);
     }
 
     private function findReporter(string $format): ?ReporterInterface

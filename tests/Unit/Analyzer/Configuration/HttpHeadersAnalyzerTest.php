@@ -126,14 +126,19 @@ class HttpHeadersAnalyzerTest extends TestCase
 
     // --- framework.yaml absent ---
 
-    public function testPassesWhenNoFrameworkConfig(): void
+    public function testDetectsAllMissingHeadersWhenNoFrameworkConfig(): void
     {
         $analyzer = $this->makeAnalyzer(null);
 
         $report = $this->makeReport();
         $analyzer->analyze($report);
 
-        $this->assertCount(0, $report->getIssuesBySeverity(Severity::WARNING));
+        // Sans config framework.yaml, les headers ne sont pas definis dans la config YAML.
+        // Le projectPath /fake/path n'a ni src/ ni nelmio_security.yaml, donc tout est absent.
+        $warnings = $report->getIssuesBySeverity(Severity::WARNING);
+        $suggestions = $report->getIssuesBySeverity(Severity::SUGGESTION);
+        $this->assertCount(2, $warnings);
+        $this->assertCount(1, $suggestions);
     }
 
     // --- Insensible à la casse des noms de headers ---

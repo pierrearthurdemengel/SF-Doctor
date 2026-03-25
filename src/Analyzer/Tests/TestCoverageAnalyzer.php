@@ -21,8 +21,10 @@ use PierreArthur\SfDoctor\Model\Severity;
  */
 final class TestCoverageAnalyzer implements AnalyzerInterface
 {
-    // Nombre minimum de fichiers de test attendus pour eviter un WARNING.
-    private const MIN_TEST_FILES = 3;
+    // Ratio minimum : 30% des controllers doivent avoir un test.
+    // Plancher a 1 fichier de test minimum.
+    private const MIN_TEST_RATIO = 0.3;
+    private const MIN_TEST_FILES_FLOOR = 1;
 
     public function __construct(
         private readonly string $projectPath,
@@ -122,15 +124,16 @@ final class TestCoverageAnalyzer implements AnalyzerInterface
 
         // Le repertoire existe, compter les fichiers de test.
         $testFileCount = $this->countTestFiles($testsDir);
+        $minTestFiles  = $this->getMinTestFiles();
 
-        if ($testFileCount < self::MIN_TEST_FILES) {
+        if ($testFileCount < $minTestFiles) {
             $report->addIssue(new Issue(
                 severity: Severity::WARNING,
                 module: Module::TESTS,
                 analyzer: $this->getName(),
                 message: "Repertoire tests/ detecte mais seulement {$testFileCount} fichier(s) de test",
                 detail: "Le repertoire tests/ existe mais ne contient que {$testFileCount} fichier(s) *Test.php. "
-                    . "Avec moins de " . self::MIN_TEST_FILES . " fichiers de test, la couverture est "
+                    . "Avec moins de {$minTestFiles} fichiers de test, la couverture est "
                     . "probablement insuffisante pour detecter les regressions.",
                 suggestion: "Ajouter des tests fonctionnels pour les routes critiques "
                     . "et des tests unitaires pour la logique metier. "
@@ -184,5 +187,29 @@ final class TestCoverageAnalyzer implements AnalyzerInterface
         }
 
         return $count;
+    }
+
+    /**
+     * Calcule le seuil minimum de fichiers de test, proportionnel au nombre de controllers.
+     */
+    private function getMinTestFiles(): int
+    {
+        $controllerDir = $this->projectPath . '/src/Controller';
+        if (!is_dir($controllerDir)) {
+            return self::MIN_TEST_FILES_FLOOR;
+        }
+
+        $controllerCount = 0;
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($controllerDir, \FilesystemIterator::SKIP_DOTS),
+        );
+
+        foreach ($iterator as $file) {
+            if ($file instanceof \SplFileInfo && $file->getExtension() === 'php') {
+                $controllerCount++;
+            }
+        }
+
+        return max(self::MIN_TEST_FILES_FLOOR, (int) ceil($controllerCount * self::MIN_TEST_RATIO));
     }
 }

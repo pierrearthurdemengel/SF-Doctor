@@ -176,4 +176,32 @@ final class AuditReport
     {
         return $this->completedAt;
     }
+
+    /**
+     * Supprime les issues correspondant aux regles d'ignore.
+     * Chaque regle peut filtrer par analyzer (nom de classe court) et/ou par file.
+     *
+     * @param list<array{analyzer?: string, file?: string, reason?: string}> $ignoreRules
+     */
+    public function filterIgnored(array $ignoreRules): void
+    {
+        if ($ignoreRules === []) {
+            return;
+        }
+
+        $this->issues = array_values(array_filter(
+            $this->issues,
+            function (Issue $issue) use ($ignoreRules): bool {
+                foreach ($ignoreRules as $rule) {
+                    $matchAnalyzer = !isset($rule['analyzer']) || $issue->getAnalyzer() === $rule['analyzer'];
+                    $matchFile     = !isset($rule['file']) || $issue->getFile() === $rule['file'];
+
+                    if ($matchAnalyzer && $matchFile) {
+                        return false; // Issue ignoree.
+                    }
+                }
+                return true;
+            },
+        ));
+    }
 }

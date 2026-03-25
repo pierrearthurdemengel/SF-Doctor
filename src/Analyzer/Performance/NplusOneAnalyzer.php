@@ -79,6 +79,12 @@ final class NplusOneAnalyzer implements AnalyzerInterface
 
             $pattern = '/\b' . preg_quote($loopVar, '/') . '\.\w+\.\w+/';
 
+            // Support du commentaire {# sf-doctor:ignore #} sur la ligne precedente.
+            $prevLine = $lines[$lineNumber - 1] ?? '';
+            if (str_contains($prevLine, 'sf-doctor:ignore')) {
+                continue;
+            }
+
             if (preg_match($pattern, $line, $accessMatch) && !str_contains($accessMatch[0], '.vars.')) {
                 // Extraire le nom de la relation a partir de l'acces detecte.
                 // Ex: "order.customer.name" -> relation = "customer"

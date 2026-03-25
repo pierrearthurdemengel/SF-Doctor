@@ -136,6 +136,12 @@ final class RateLimiterAnalyzer implements AnalyzerInterface
             return;
         }
 
+        // Verifier si le controller utilise directement un rate limiter via injection.
+        $loginRoutes = array_filter($loginRoutes, fn (array $r) => !$this->controllerUsesRateLimiter($r['file']));
+        if (empty($loginRoutes)) {
+            return;
+        }
+
         // Au moins une route de login detectee mais pas de rate limiter configure.
         $routeList = implode(', ', array_map(fn (array $r) => $r['route'], $loginRoutes));
         $firstFile = $loginRoutes[0]['file'];
@@ -177,6 +183,12 @@ final class RateLimiterAnalyzer implements AnalyzerInterface
             return;
         }
 
+        // Verifier si les controllers utilisent directement un rate limiter via injection.
+        $apiRoutes = array_filter($apiRoutes, fn (array $r) => !$this->controllerUsesRateLimiter($r['file']));
+        if (empty($apiRoutes)) {
+            return;
+        }
+
         $routeList = implode(', ', array_map(fn (array $r) => $r['route'], $apiRoutes));
         $firstFile = $apiRoutes[0]['file'];
 
@@ -199,5 +211,25 @@ final class RateLimiterAnalyzer implements AnalyzerInterface
             docUrl: 'https://symfony.com/doc/current/rate_limiter.html',
             estimatedFixMinutes: 20,
         ));
+    }
+
+    /**
+     * Verifie si un controller utilise un rate limiter via injection ou attribut.
+     */
+    private function controllerUsesRateLimiter(string $relativeFile): bool
+    {
+        $filePath = $this->projectPath . '/' . $relativeFile;
+        if (!file_exists($filePath)) {
+            return false;
+        }
+
+        $content = file_get_contents($filePath);
+        if ($content === false) {
+            return false;
+        }
+
+        return str_contains($content, 'RateLimiterFactory')
+            || str_contains($content, '#[RateLimit')
+            || str_contains($content, 'login_throttling');
     }
 }

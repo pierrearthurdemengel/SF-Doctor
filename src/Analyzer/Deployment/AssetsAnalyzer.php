@@ -12,6 +12,7 @@ use PierreArthur\SfDoctor\Model\AuditReport;
 use PierreArthur\SfDoctor\Model\Issue;
 use PierreArthur\SfDoctor\Model\Module;
 use PierreArthur\SfDoctor\Model\Severity;
+use Symfony\Component\Finder\Finder;
 
 /**
  * Verifie que les assets front-end sont correctement compiles et deployes.
@@ -125,9 +126,11 @@ final class AssetsAnalyzer implements AnalyzerInterface
             return;
         }
 
-        $manifestFile = $buildDir . '/manifest.json';
+        // Chercher manifest.json recursivement (multi-build Encore : shop/, admin/, etc.)
+        $finder = new Finder();
+        $finder->files()->name('manifest.json')->in($buildDir);
 
-        if (file_exists($manifestFile)) {
+        if ($finder->hasResults()) {
             return;
         }
 

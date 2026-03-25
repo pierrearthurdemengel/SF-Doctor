@@ -120,6 +120,11 @@ final class TestCoverageAnalyzerTest extends TestCase
     {
         file_put_contents($this->tempDir . '/phpunit.xml', '<phpunit/>');
         mkdir($this->tempDir . '/tests', 0777, true);
+        // Creer 10 controllers pour que le seuil passe a ceil(10 * 0.3) = 3.
+        mkdir($this->tempDir . '/src/Controller', 0777, true);
+        for ($i = 1; $i <= 10; $i++) {
+            file_put_contents($this->tempDir . "/src/Controller/Controller{$i}.php", "<?php\nclass Controller{$i} {}");
+        }
         // Seulement 2 fichiers de test (en dessous du seuil de 3).
         file_put_contents($this->tempDir . '/tests/OneTest.php', "<?php\nclass OneTest {}");
         file_put_contents($this->tempDir . '/tests/TwoTest.php', "<?php\nclass TwoTest {}");

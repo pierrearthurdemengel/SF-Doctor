@@ -24,6 +24,13 @@ use PierreArthur\SfDoctor\Model\Severity;
  */
 final class HttpMethodOverrideAnalyzer implements AnalyzerInterface
 {
+    /** Packages qui necessitent http_method_override pour les forms HTML (PUT/DELETE). */
+    private const FRAMEWORKS_REQUIRING_OVERRIDE = [
+        'sylius/sylius',
+        'easycorp/easyadmin-bundle',
+        'sonata-project/admin-bundle',
+    ];
+
     public function __construct(
         private readonly ConfigReaderInterface $configReader,
     ) {}
@@ -33,6 +40,18 @@ final class HttpMethodOverrideAnalyzer implements AnalyzerInterface
         $config = $this->configReader->read('config/packages/framework.yaml');
 
         if ($config === null) {
+            return;
+        }
+
+        // Si le projet utilise un framework qui necessite http_method_override, ne pas flagger.
+        if ($this->projectRequiresMethodOverride($report->getProjectPath())) {
+            return;
+        }
+
+        // Si le projet utilise symfony/form, _method est attendu pour les forms HTML.
+        $composerJson = $this->readComposerJson($report->getProjectPath());
+        $deps = array_merge($composerJson['require'] ?? [], $composerJson['require-dev'] ?? []);
+        if (isset($deps['symfony/form'])) {
             return;
         }
 
@@ -89,5 +108,39 @@ final class HttpMethodOverrideAnalyzer implements AnalyzerInterface
                 . 'par des restrictions sur DELETE ou PUT deviennent accessibles via POST.',
             estimatedFixMinutes: 10,
         ));
+    }
+
+    private function projectRequiresMethodOverride(string $projectPath): bool
+    {
+        $composerJson = $this->readComposerJson($projectPath);
+        $deps = array_merge($composerJson['require'] ?? [], $composerJson['require-dev'] ?? []);
+
+        foreach (self::FRAMEWORKS_REQUIRING_OVERRIDE as $pkg) {
+            if (isset($deps[$pkg])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function readComposerJson(string $projectPath): array
+    {
+        $path = $projectPath . '/composer.json';
+        if (!file_exists($path)) {
+            return [];
+        }
+
+        $content = file_get_contents($path);
+        if ($content === false) {
+            return [];
+        }
+
+        $data = json_decode($content, true);
+
+        return is_array($data) ? $data : [];
     }
 }
