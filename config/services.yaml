@@ -399,6 +399,12 @@ services:
         tags:
             - { name: sf_doctor.analyzer, module: tests }
 
+    PierreArthur\SfDoctor\Analyzer\Tests\TestFixtureAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: tests }
+
     # --- Commande Install Hooks ---
 
     PierreArthur\SfDoctor\Command\InstallHooksCommand:
