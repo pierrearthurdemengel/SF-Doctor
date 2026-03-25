@@ -8,6 +8,7 @@ use PierreArthur\SfDoctor\Model\AuditReport;
 use PierreArthur\SfDoctor\Model\Issue;
 use PierreArthur\SfDoctor\Model\Module;
 use PierreArthur\SfDoctor\Model\Severity;
+use PierreArthur\SfDoctor\Score\ScoreEngine;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -34,7 +35,7 @@ final class ConsoleReporter implements ReporterInterface
             $this->printModule($report, $module, $io, $brief);
         }
 
-        $this->printScore($report, $io);
+        $this->printScoreDashboard($report, $io);
 
         if (!$brief) {
             $this->printTotalEstimatedTime($report, $io);
@@ -128,18 +129,59 @@ final class ConsoleReporter implements ReporterInterface
         }
     }
 
-    private function printScore(AuditReport $report, SymfonyStyle $io): void
+    private function printScoreDashboard(AuditReport $report, SymfonyStyle $io): void
     {
-        $score = $report->getScore();
-        $io->newLine();
+        $scoreEngine = new ScoreEngine();
+        $scores = $scoreEngine->computeScores($report);
+        $globalScore = $scoreEngine->computeGlobalScore($report);
 
-        if ($score >= 80) {
-            $io->success(sprintf('Score : %d/100', $score));
-        } elseif ($score >= 50) {
-            $io->warning(sprintf('Score : %d/100', $score));
-        } else {
-            $io->error(sprintf('Score : %d/100', $score));
+        $io->newLine();
+        $io->section('Tableau de bord');
+
+        if (count($scores) > 0) {
+            foreach ($scores as $dimension => $data) {
+                $bar = $this->buildProgressBar($data['score']);
+                $statusLabel = $this->formatStatus($data['status'], $data['score']);
+                $io->text(sprintf(
+                    '  %-18s : %3d/100  %s  %s',
+                    ucfirst($dimension),
+                    $data['score'],
+                    $bar,
+                    $statusLabel,
+                ));
+            }
+
+            $io->text('  ' . str_repeat('-', 55));
         }
+
+        $scoreText = sprintf('  Score global      : %3d/100', $globalScore);
+
+        if ($globalScore >= 80) {
+            $io->success($scoreText);
+        } elseif ($globalScore >= 50) {
+            $io->warning($scoreText);
+        } else {
+            $io->error($scoreText);
+        }
+    }
+
+    private function buildProgressBar(int $score): string
+    {
+        $filled = (int) round($score / 10);
+        $empty = 10 - $filled;
+
+        return '[' . str_repeat("\u{2588}", $filled) . str_repeat("\u{2591}", $empty) . ']';
+    }
+
+    private function formatStatus(string $status, int $score): string
+    {
+        return match ($status) {
+            'critique' => '<fg=red;options=bold>CRITIQUE</>',
+            'a-ameliorer' => '<fg=yellow>A AMELIORER</>',
+            'bon' => '<fg=green>BON</>',
+            'excellent' => '<fg=green;options=bold>EXCELLENT</>',
+            default => $status,
+        };
     }
 
     private function printTotalEstimatedTime(AuditReport $report, SymfonyStyle $io): void

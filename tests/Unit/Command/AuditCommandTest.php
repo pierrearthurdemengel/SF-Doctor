@@ -256,7 +256,7 @@ final class AuditCommandTest extends TestCase
             businessImpact: 'Impact confidentiel qui ne doit pas apparaître.',
             fixCode: 'fix_code_qui_ne_doit_pas_apparaitre',
             docUrl: 'https://symfony.com/secret',
-            estimatedFixMinutes: 99,
+            estimatedFixMinutes: 42,
         );
 
         $analyzer = $this->createAnalyzer(Module::SECURITY, [$issue]);
@@ -273,7 +273,7 @@ final class AuditCommandTest extends TestCase
         $this->assertStringNotContainsString('Impact confidentiel', $display);
         $this->assertStringNotContainsString('fix_code_qui_ne_doit_pas_apparaitre', $display);
         $this->assertStringNotContainsString('https://symfony.com/secret', $display);
-        $this->assertStringNotContainsString('99', $display);
+        $this->assertStringNotContainsString('42 min', $display);
     }
 
 

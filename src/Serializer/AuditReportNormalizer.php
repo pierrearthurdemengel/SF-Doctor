@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace PierreArthur\SfDoctor\Serializer;
 
 use PierreArthur\SfDoctor\Model\AuditReport;
+use PierreArthur\SfDoctor\Score\ScoreEngine;
 use Symfony\Component\Serializer\Normalizer\NormalizerAwareInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerAwareTrait;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
@@ -40,6 +41,10 @@ final class AuditReportNormalizer implements NormalizerInterface, NormalizerAwar
             default               => 'ok',
         };
 
+        $scoreEngine = new ScoreEngine();
+        $dimensionScores = $scoreEngine->computeScores($object);
+        $globalScore = $scoreEngine->computeGlobalScore($object);
+
         return [
             'meta' => [
                 'generated_at' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
@@ -47,6 +52,7 @@ final class AuditReportNormalizer implements NormalizerInterface, NormalizerAwar
             ],
             'summary' => [
                 'score'        => $object->getScore(),
+                'global_score' => $globalScore,
                 'status'       => $status,
                 'issues_count' => [
                     'total'      => count($issues),
@@ -54,6 +60,7 @@ final class AuditReportNormalizer implements NormalizerInterface, NormalizerAwar
                     'warning'    => $warningCount,
                     'suggestion' => $suggestionCount,
                 ],
+                'scores_by_dimension' => $dimensionScores,
             ],
             'issues' => $normalizedIssues,
         ];
