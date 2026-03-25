@@ -31,7 +31,6 @@ class ProductionReadinessAnalyzerTest extends TestCase
     public function testComposerLockPresentDoesNothing(): void
     {
         file_put_contents($this->tempDir . '/composer.lock', '{}');
-        file_put_contents($this->tempDir . '/config/preload.php', '<?php');
         mkdir($this->tempDir . '/config', 0777, true);
         file_put_contents($this->tempDir . '/config/preload.php', '<?php');
 
