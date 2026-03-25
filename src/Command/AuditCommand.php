@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace PierreArthur\SfDoctor\Command;
 
+use PierreArthur\SfDoctor\Context\ProjectContext;
 use PierreArthur\SfDoctor\Context\ProjectContextDetector;
 use PierreArthur\SfDoctor\Cache\ResultCacheInterface;
 use PierreArthur\SfDoctor\Config\ParameterResolverInterface;
@@ -11,6 +12,8 @@ use PierreArthur\SfDoctor\Event\AnalysisCompletedEvent;
 use PierreArthur\SfDoctor\Event\AnalysisStartedEvent;
 use PierreArthur\SfDoctor\Event\IssueFoundEvent;
 use PierreArthur\SfDoctor\Event\ModuleCompletedEvent;
+use PierreArthur\SfDoctor\Diff\AuditReportDiff;
+use PierreArthur\SfDoctor\Diff\BaselineStorage;
 use PierreArthur\SfDoctor\EventSubscriber\CacheSubscriber;
 use PierreArthur\SfDoctor\EventSubscriber\ProgressSubscriber;
 use PierreArthur\SfDoctor\Message\RunAnalyzerMessage;
@@ -19,6 +22,7 @@ use PierreArthur\SfDoctor\Model\Module;
 use PierreArthur\SfDoctor\Model\Severity;
 use PierreArthur\SfDoctor\Report\ReporterInterface;
 use PierreArthur\SfDoctor\Workflow\AuditContext;
+use PierreArthur\SfDoctor\Watch\FileWatcher;
 use PierreArthur\SfDoctor\Workflow\AuditWorkflow;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -62,10 +66,20 @@ final class AuditCommand extends Command
             ->addOption('security', 's', InputOption::VALUE_NONE, 'Audit sécurité uniquement')
             ->addOption('architecture', 'a', InputOption::VALUE_NONE, 'Audit architecture uniquement')
             ->addOption('performance', 'p', InputOption::VALUE_NONE, 'Audit performance uniquement')
+            ->addOption('doctrine', null, InputOption::VALUE_NONE, 'Audit Doctrine uniquement')
+            ->addOption('messenger', null, InputOption::VALUE_NONE, 'Audit Messenger uniquement')
+            ->addOption('api-platform', null, InputOption::VALUE_NONE, 'Audit API Platform uniquement')
+            ->addOption('migration', null, InputOption::VALUE_NONE, 'Audit migration uniquement')
+            ->addOption('twig', null, InputOption::VALUE_NONE, 'Audit Twig uniquement')
+            ->addOption('deployment', null, InputOption::VALUE_NONE, 'Audit deployabilite uniquement')
+            ->addOption('tests', null, InputOption::VALUE_NONE, 'Audit tests uniquement')
             ->addOption('all', null, InputOption::VALUE_NONE, 'Tous les modules (défaut si aucun module spécifié)')
             ->addOption('format', 'f', InputOption::VALUE_REQUIRED, 'Format de sortie (console, json)', 'console')
             ->addOption('async', null, InputOption::VALUE_NONE, 'Exécuter les analyzers via Messenger (nécessite un bus configuré)')
             ->addOption('brief', null, InputOption::VALUE_NONE, 'Affichage condensé : message et fichier uniquement, sans enrichissement')
+            ->addOption('diff', null, InputOption::VALUE_REQUIRED, 'Comparer avec une baseline (chemin du fichier JSON)')
+            ->addOption('save-baseline', null, InputOption::VALUE_REQUIRED, 'Sauvegarder le rapport comme baseline (chemin du fichier JSON)')
+            ->addOption('watch', 'w', InputOption::VALUE_NONE, 'Surveiller les fichiers et relancer l\'audit a chaque modification')
         ;
     }
 
@@ -86,10 +100,12 @@ final class AuditCommand extends Command
         $this->dispatcher->addSubscriber(new CacheSubscriber($this->cache));
 
         // --- Vérification du cache ---
+        // En mode --watch, le cache est ignore : on veut toujours un audit frais.
+        $watchMode    = (bool) $input->getOption('watch');
         $hash         = $this->cache->computeHash($this->projectPath);
         $cachedReport = $this->cache->load($hash);
 
-        if ($cachedReport !== null) {
+        if ($cachedReport !== null && !$watchMode) {
             $io->text('<comment>Rapport chargé depuis le cache.</comment>');
             $io->newLine();
 
@@ -103,8 +119,7 @@ final class AuditCommand extends Command
 
             $reporter->generate($cachedReport, $output, ['brief' => (bool) $input->getOption('brief')]);
 
-            $criticals = $cachedReport->getIssuesBySeverity(Severity::CRITICAL);
-            return count($criticals) > 0 ? Command::FAILURE : Command::SUCCESS;
+            return $this->handlePostAnalysis($cachedReport, $input, $io);
         }
 
         $modules = $this->resolveModules($input);
@@ -228,12 +243,14 @@ final class AuditCommand extends Command
             AnalysisCompletedEvent::NAME,
         );
 
-        $criticals = $report->getIssuesBySeverity(Severity::CRITICAL);
-        if (count($criticals) > 0) {
-            return Command::FAILURE;
+        $exitCode = $this->handlePostAnalysis($report, $input, $io);
+
+        if ($watchMode) {
+            $this->watchLoop($io, $modules, $analyzersByModule, $projectContext, $report);
+            return Command::SUCCESS;
         }
 
-        return Command::SUCCESS;
+        return $exitCode;
     }
 
     /**
@@ -263,17 +280,28 @@ final class AuditCommand extends Command
      */
     private function resolveModules(InputInterface $input): array
     {
-        if ($input->getOption('security')) {
-            return [Module::SECURITY];
-        }
-        if ($input->getOption('architecture')) {
-            return [Module::ARCHITECTURE];
-        }
-        if ($input->getOption('performance')) {
-            return [Module::PERFORMANCE];
+        // Map des options CLI vers les modules.
+        $optionModuleMap = [
+            'security' => Module::SECURITY,
+            'architecture' => Module::ARCHITECTURE,
+            'performance' => Module::PERFORMANCE,
+            'doctrine' => Module::DOCTRINE,
+            'messenger' => Module::MESSENGER,
+            'api-platform' => Module::API_PLATFORM,
+            'migration' => Module::MIGRATION,
+            'twig' => Module::TWIG,
+            'deployment' => Module::DEPLOYMENT,
+            'tests' => Module::TESTS,
+        ];
+
+        foreach ($optionModuleMap as $option => $module) {
+            if ($input->getOption($option)) {
+                return [$module];
+            }
         }
 
-        return [Module::SECURITY, Module::ARCHITECTURE, Module::PERFORMANCE];
+        // Par defaut : tous les modules.
+        return Module::cases();
     }
 
     private function findReporter(string $format): ?ReporterInterface
@@ -284,5 +312,186 @@ final class AuditCommand extends Command
             }
         }
         return null;
+    }
+
+    /**
+     * Logique post-analyse commune aux chemins cache et normal.
+     * Gere la sauvegarde de baseline, le calcul du diff et le code de sortie.
+     */
+    private function handlePostAnalysis(AuditReport $report, InputInterface $input, SymfonyStyle $io): int
+    {
+        $baselineStorage = new BaselineStorage();
+
+        // Sauvegarder la baseline si demande.
+        $saveBaselinePath = $input->getOption('save-baseline');
+        if (is_string($saveBaselinePath) && $saveBaselinePath !== '') {
+            $baselineStorage->save($saveBaselinePath, $report);
+            $io->newLine();
+            $io->text(sprintf('<info>Baseline sauvegardee dans %s</info>', $saveBaselinePath));
+        }
+
+        // Comparer avec une baseline si demande.
+        $diffPath = $input->getOption('diff');
+        if (is_string($diffPath) && $diffPath !== '') {
+            $previous = $baselineStorage->load($diffPath);
+            if ($previous === null) {
+                $io->error(sprintf('Impossible de charger la baseline : %s', $diffPath));
+                return Command::FAILURE;
+            }
+
+            $diff = new AuditReportDiff($previous, $report);
+            $this->displayDiff($io, $diff);
+
+            return $this->computeDiffExitCode($diff);
+        }
+
+        // Sans --diff : exit code base sur tous les CRITICALs.
+        $criticals = $report->getIssuesBySeverity(Severity::CRITICAL);
+        return count($criticals) > 0 ? Command::FAILURE : Command::SUCCESS;
+    }
+
+    /**
+     * Affiche le resultat de la comparaison entre deux rapports.
+     */
+    private function displayDiff(SymfonyStyle $io, AuditReportDiff $diff): void
+    {
+        $io->newLine();
+        $io->section('Comparaison avec la baseline');
+
+        if ($diff->isEmpty()) {
+            $io->success('Aucun changement detecte.');
+            return;
+        }
+
+        $fixed = $diff->getFixed();
+        if (count($fixed) > 0) {
+            $io->text(sprintf('<info>%d issue(s) corrigee(s) :</info>', count($fixed)));
+            foreach ($fixed as $issue) {
+                $io->text(sprintf(
+                    '  <fg=green>[-]</> [%s] [%s] %s',
+                    strtoupper($issue->getSeverity()->value),
+                    $issue->getModule()->value,
+                    $issue->getMessage(),
+                ));
+            }
+            $io->newLine();
+        }
+
+        $introduced = $diff->getIntroduced();
+        if (count($introduced) > 0) {
+            $io->text(sprintf('<fg=red>%d issue(s) introduite(s) :</>', count($introduced)));
+            foreach ($introduced as $issue) {
+                $io->text(sprintf(
+                    '  <fg=red>[+]</> [%s] [%s] %s',
+                    strtoupper($issue->getSeverity()->value),
+                    $issue->getModule()->value,
+                    $issue->getMessage(),
+                ));
+            }
+            $io->newLine();
+        }
+
+        $io->text(sprintf(
+            'Bilan : <info>%d corrigee(s)</info>, <fg=red>%d introduite(s)</>',
+            count($fixed),
+            count($introduced),
+        ));
+    }
+
+    /**
+     * En mode --diff, seuls les CRITICALs nouvellement introduits declenchent un echec.
+     * Les CRITICALs qui existaient deja dans la baseline ne bloquent pas.
+     */
+    private function computeDiffExitCode(AuditReportDiff $diff): int
+    {
+        foreach ($diff->getIntroduced() as $issue) {
+            if ($issue->getSeverity() === Severity::CRITICAL) {
+                return Command::FAILURE;
+            }
+        }
+
+        return Command::SUCCESS;
+    }
+
+    /**
+     * Boucle de surveillance : relance l'audit a chaque modification de fichier.
+     * Affiche uniquement le diff par rapport a l'analyse precedente.
+     * S'arrete avec Ctrl+C.
+     *
+     * @param list<Module> $modules
+     * @param array<string, list<AnalyzerInterface>> $analyzersByModule
+     */
+    private function watchLoop(
+        SymfonyStyle $io,
+        array $modules,
+        array $analyzersByModule,
+        ProjectContext $projectContext,
+        AuditReport $previousReport,
+    ): void {
+        $watchDirs = [];
+        foreach (['src', 'config', 'templates'] as $dir) {
+            $path = $this->projectPath . '/' . $dir;
+            if (is_dir($path)) {
+                $watchDirs[] = $path;
+            }
+        }
+
+        if (count($watchDirs) === 0) {
+            $io->warning('Aucun repertoire a surveiller (src/, config/, templates/ absents).');
+            return;
+        }
+
+        $watcher = new FileWatcher($watchDirs);
+
+        $io->newLine();
+        $io->text(sprintf(
+            '<comment>Mode watch actif. Surveillance de : %s</comment>',
+            implode(', ', array_map(fn (string $d): string => basename($d) . '/', $watchDirs)),
+        ));
+        $io->text('<comment>Ctrl+C pour arreter.</comment>');
+
+        /** @phpstan-ignore-next-line Boucle infinie volontaire, interrompue par Ctrl+C. */
+        while (true) {
+            usleep(500_000); // 500ms entre chaque verification.
+
+            $changedFiles = $watcher->detectChanges();
+            if (count($changedFiles) === 0) {
+                continue;
+            }
+
+            $io->newLine();
+            $io->text(sprintf(
+                '<info>%d fichier(s) modifie(s) :</info>',
+                count($changedFiles),
+            ));
+            foreach ($changedFiles as $file) {
+                $io->text(sprintf('  - %s', basename($file)));
+            }
+            $io->newLine();
+            $io->text('Relance de l\'audit...');
+
+            // Relancer l'analyse complete.
+            $newReport = new AuditReport($this->projectPath, $modules);
+            foreach ($analyzersByModule as $analyzers) {
+                foreach ($analyzers as $analyzer) {
+                    if ($analyzer->supports($projectContext)) {
+                        $analyzer->analyze($newReport);
+                    }
+                }
+            }
+            $newReport->complete();
+
+            // Afficher le diff.
+            $diff = new AuditReportDiff($previousReport, $newReport);
+            if ($diff->isEmpty()) {
+                $io->text('<comment>Aucun changement dans les issues.</comment>');
+            } else {
+                $this->displayDiff($io, $diff);
+            }
+
+            $io->text(sprintf('Score : <info>%d/100</info>', $newReport->getScore()));
+
+            $previousReport = $newReport;
+        }
     }
 }

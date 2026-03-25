@@ -3,6 +3,7 @@
 namespace PierreArthur\SfDoctor\Tests\Unit\Command;
 
 use PHPUnit\Framework\TestCase;
+use PierreArthur\SfDoctor\Diff\BaselineStorage;
 use PierreArthur\SfDoctor\Model\Issue;
 use PierreArthur\SfDoctor\Model\Module;
 use PierreArthur\SfDoctor\Model\Severity;
@@ -276,6 +277,180 @@ final class AuditCommandTest extends TestCase
     }
 
 
+    // ---------------------------------------------------------------
+    // 13. --save-baseline sauvegarde le rapport sur disque
+    // ---------------------------------------------------------------
+    public function testSaveBaselineCreatesFile(): void
+    {
+        $analyzer = $this->createAnalyzer(Module::SECURITY, [
+            new Issue(
+                severity: Severity::WARNING,
+                module: Module::SECURITY,
+                analyzer: 'TestAnalyzer',
+                message: 'Issue de test',
+                detail: 'Detail.',
+                suggestion: 'Fix.',
+            ),
+        ]);
+
+        $baselinePath = sys_get_temp_dir() . '/sf_doctor_test_baseline_' . uniqid() . '.json';
+
+        $tester = $this->createCommandTester([$analyzer]);
+        $tester->execute(['--save-baseline' => $baselinePath]);
+
+        $this->assertFileExists($baselinePath);
+        $this->assertStringContainsString('Baseline sauvegardee', $tester->getDisplay());
+
+        // Verifier que le fichier contient un rapport valide.
+        $storage = new BaselineStorage();
+        $loaded = $storage->load($baselinePath);
+        $this->assertNotNull($loaded);
+        $this->assertCount(1, $loaded->getIssues());
+
+        unlink($baselinePath);
+    }
+
+    // ---------------------------------------------------------------
+    // 14. --diff sans regression → SUCCESS
+    // ---------------------------------------------------------------
+    public function testDiffWithNoRegressionReturnsSuccess(): void
+    {
+        // Baseline avec un WARNING.
+        $baselinePath = $this->createBaselineFile([
+            new Issue(
+                severity: Severity::WARNING,
+                module: Module::SECURITY,
+                analyzer: 'TestAnalyzer',
+                message: 'Issue existante',
+                detail: 'Detail.',
+                suggestion: 'Fix.',
+            ),
+        ]);
+
+        // Audit courant : meme issue, pas de regression.
+        $analyzer = $this->createAnalyzer(Module::SECURITY, [
+            new Issue(
+                severity: Severity::WARNING,
+                module: Module::SECURITY,
+                analyzer: 'TestAnalyzer',
+                message: 'Issue existante',
+                detail: 'Detail.',
+                suggestion: 'Fix.',
+            ),
+        ]);
+
+        $tester = $this->createCommandTester([$analyzer]);
+        $tester->execute(['--diff' => $baselinePath]);
+
+        $tester->assertCommandIsSuccessful();
+        $this->assertStringContainsString('Aucun changement', $tester->getDisplay());
+
+        unlink($baselinePath);
+    }
+
+    // ---------------------------------------------------------------
+    // 15. --diff avec CRITICAL introduit → FAILURE
+    // ---------------------------------------------------------------
+    public function testDiffWithIntroducedCriticalReturnsFailure(): void
+    {
+        // Baseline vide.
+        $baselinePath = $this->createBaselineFile([]);
+
+        // Audit courant : un nouveau CRITICAL.
+        $analyzer = $this->createAnalyzer(Module::SECURITY, [
+            new Issue(
+                severity: Severity::CRITICAL,
+                module: Module::SECURITY,
+                analyzer: 'TestAnalyzer',
+                message: 'Nouvelle faille critique',
+                detail: 'Detail.',
+                suggestion: 'Fix.',
+            ),
+        ]);
+
+        $tester = $this->createCommandTester([$analyzer]);
+        $tester->execute(['--diff' => $baselinePath]);
+
+        $this->assertSame(Command::FAILURE, $tester->getStatusCode());
+        $this->assertStringContainsString('introduite', $tester->getDisplay());
+        $this->assertStringContainsString('Nouvelle faille critique', $tester->getDisplay());
+
+        unlink($baselinePath);
+    }
+
+    // ---------------------------------------------------------------
+    // 16. --diff avec CRITICAL existant (pas nouveau) → SUCCESS
+    // ---------------------------------------------------------------
+    public function testDiffWithExistingCriticalReturnsSuccess(): void
+    {
+        $existingCritical = new Issue(
+            severity: Severity::CRITICAL,
+            module: Module::SECURITY,
+            analyzer: 'TestAnalyzer',
+            message: 'Faille connue depuis longtemps',
+            detail: 'Detail.',
+            suggestion: 'Fix.',
+        );
+
+        // Baseline avec le CRITICAL.
+        $baselinePath = $this->createBaselineFile([$existingCritical]);
+
+        // Audit courant : meme CRITICAL.
+        $analyzer = $this->createAnalyzer(Module::SECURITY, [$existingCritical]);
+
+        $tester = $this->createCommandTester([$analyzer]);
+        $tester->execute(['--diff' => $baselinePath]);
+
+        // Le CRITICAL existe deja dans la baseline, donc pas de regression.
+        $tester->assertCommandIsSuccessful();
+
+        unlink($baselinePath);
+    }
+
+    // ---------------------------------------------------------------
+    // 17. --diff affiche les issues corrigees
+    // ---------------------------------------------------------------
+    public function testDiffShowsFixedIssues(): void
+    {
+        // Baseline avec un WARNING.
+        $baselinePath = $this->createBaselineFile([
+            new Issue(
+                severity: Severity::WARNING,
+                module: Module::SECURITY,
+                analyzer: 'TestAnalyzer',
+                message: 'Issue qui va etre corrigee',
+                detail: 'Detail.',
+                suggestion: 'Fix.',
+            ),
+        ]);
+
+        // Audit courant : vide (l'issue a ete corrigee).
+        $analyzer = $this->createAnalyzer(Module::SECURITY, []);
+
+        $tester = $this->createCommandTester([$analyzer]);
+        $tester->execute(['--diff' => $baselinePath]);
+
+        $tester->assertCommandIsSuccessful();
+        $this->assertStringContainsString('corrigee', $tester->getDisplay());
+        $this->assertStringContainsString('Issue qui va etre corrigee', $tester->getDisplay());
+
+        unlink($baselinePath);
+    }
+
+    // ---------------------------------------------------------------
+    // 18. --diff avec fichier inexistant → FAILURE
+    // ---------------------------------------------------------------
+    public function testDiffWithMissingBaselineReturnsFailure(): void
+    {
+        $analyzer = $this->createAnalyzer(Module::SECURITY, []);
+
+        $tester = $this->createCommandTester([$analyzer]);
+        $tester->execute(['--diff' => '/chemin/inexistant/baseline.json']);
+
+        $this->assertSame(Command::FAILURE, $tester->getStatusCode());
+        $this->assertStringContainsString('Impossible de charger', $tester->getDisplay());
+    }
+
     // ===============================================================
     // HELPERS
     // ===============================================================
@@ -302,6 +477,24 @@ final class AuditCommandTest extends TestCase
         );
 
         return $analyzer;
+    }
+
+    /**
+     * Cree un fichier baseline temporaire contenant les issues fournies.
+     *
+     * @param list<Issue> $issues
+     */
+    private function createBaselineFile(array $issues): string
+    {
+        $report = new AuditReport(self::PROJECT_PATH, [Module::SECURITY, Module::ARCHITECTURE, Module::PERFORMANCE]);
+        foreach ($issues as $issue) {
+            $report->addIssue($issue);
+        }
+
+        $path = sys_get_temp_dir() . '/sf_doctor_test_baseline_' . uniqid() . '.json';
+        (new BaselineStorage())->save($path, $report);
+
+        return $path;
     }
 
     /**
