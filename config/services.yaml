@@ -260,6 +260,13 @@ services:
         tags:
             - { name: sf_doctor.analyzer, module: doctrine }
 
+    PierreArthur\SfDoctor\Analyzer\Doctrine\LazyGhostObjectAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        autowire: true
+        tags:
+            - { name: sf_doctor.analyzer, module: doctrine }
+
     # --- Analyzers Messenger ---
 
     PierreArthur\SfDoctor\Analyzer\Messenger\MessengerTransportAnalyzer:
@@ -270,6 +277,19 @@ services:
     PierreArthur\SfDoctor\Analyzer\Messenger\UnhandledMessageAnalyzer:
         arguments:
             $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: messenger }
+
+    PierreArthur\SfDoctor\Analyzer\Messenger\UnserializableMessageAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: messenger }
+
+    PierreArthur\SfDoctor\Analyzer\Messenger\MessengerSigningAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        autowire: true
         tags:
             - { name: sf_doctor.analyzer, module: messenger }
 
