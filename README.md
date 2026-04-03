@@ -1,6 +1,6 @@
 # SF-Doctor
 
-**Outil CLI d'audit automatise pour projets Symfony — 55+ checks, 11 modules, zero config.**
+**Outil CLI d'audit automatise pour projets Symfony — 80+ checks, 11 modules, zero config.**
 
 SF-Doctor analyse la securite, l'architecture, la performance et la configuration de vos
 projets Symfony. Il detecte les failles, les anti-patterns et les oublis de configuration.
@@ -86,14 +86,28 @@ Code Scanning.
 | **MessengerTransportAnalyzer** | `messenger.yaml` | Transport sync, transport failed absent, retry manquant |
 | **MessengerSigningAnalyzer** | `messenger.yaml` | Messages non signes (Symfony 7.4+) |
 
-### Module API Platform (4 analyzers)
+### Module API Platform (18 analyzers)
 
 | Analyzer | Cible | Exemples de detection |
 |---|---|---|
-| **OperationSecurityAnalyzer** | `src/Entity/` | Operations sans `security` attribute |
-| **SerializationGroupAnalyzer** | `src/Entity/` | Ressources sans groupes de serialisation |
-| **PaginationAnalyzer** | `src/Entity/` | Pagination desactivee sur des collections |
-| **ValidationAnalyzer** | `src/Entity/` | Ressources sans contraintes de validation |
+| **OperationSecurityAnalyzer** | `src/Entity/`, `src/ApiResource/` | Operations sans `security`, heritage de securite |
+| **SerializationGroupAnalyzer** | `src/Entity/`, `src/ApiResource/` | Ressources sans groupes de serialisation |
+| **PaginationAnalyzer** | `api_platform.yaml` | Pagination desactivee, client_items_per_page sans maximum (DOS) |
+| **ValidationAnalyzer** | `src/Entity/`, `src/ApiResource/` | Ressources sans `#[Assert\*]`, colonnes NOT NULL sans NotBlank |
+| **DtoPatternAnalyzer** | `src/Entity/` | Entites Doctrine exposees sans DTO (input/output) |
+| **FilterConfigAnalyzer** | `src/Entity/`, `src/ApiResource/` | Filtres `partial` sur champs sensibles, OrderFilter sans restriction |
+| **DeprecatedAnnotationAnalyzer** | `src/Entity/`, `src/ApiResource/` | Annotations 2.x (`@ApiResource`, `@ApiSubresource`) |
+| **SubresourceSecurityAnalyzer** | `src/Entity/`, `src/ApiResource/` | Sous-ressources sans security (IDOR), imbrication profonde |
+| **OpenApiConfigAnalyzer** | `src/Entity/`, `src/ApiResource/` | Ressources et operations sans description OpenAPI |
+| **NormalizationContextAnalyzer** | `src/Entity/`, `src/ApiResource/` | normalizationContext sans denormalizationContext, groupes identiques read/write, groupes orphelins |
+| **ApiPropertyConfigAnalyzer** | `src/Entity/`, `src/ApiResource/` | IDs auto-increment exposes (IDOR), identifiants modifiables |
+| **GlobalApiPlatformConfigAnalyzer** | `api_platform.yaml` | show_webby actif, error_formats absent, format HTML, mapping.paths |
+| **StateProviderProcessorAnalyzer** | `src/Entity/`, `src/ApiResource/` | processor/provider referancant une classe inexistante (500 runtime), processor sur ressource read-only |
+| **HttpCacheAnalyzer** | `src/Entity/`, `src/ApiResource/` | Absence de cache HTTP sur GET, cache public sur ressource protegee (fuite de donnees) |
+| **RateLimitingAnalyzer** | `src/Entity/`, `src/ApiResource/` | Endpoints sensibles (login, register) sans throttling, POST publics sans rate limit |
+| **CircularReferenceAnalyzer** | `src/Entity/`, `src/ApiResource/` | Relations bidirectionnelles sans `#[MaxDepth]`, MaxDepth sans `enable_max_depth` |
+| **ResourceNamingAnalyzer** | `src/Entity/`, `src/ApiResource/` | shortName non kebab-case, verbes dans les noms de ressources, routePrefix avec underscores |
+| **DeprecatedConfigKeyAnalyzer** | `api_platform.yaml` | Cles YAML depreciees (collection, item_operations, exception_to_status), Swagger 2, docs en production |
 
 ### Module Twig (3 analyzers)
 
@@ -443,7 +457,7 @@ src/
 │   ├── Performance/            # 1 analyzer
 │   ├── Doctrine/               # 5 analyzers
 │   ├── Messenger/              # 4 analyzers
-│   ├── ApiPlatform/            # 4 analyzers
+│   ├── ApiPlatform/            # 18 analyzers
 │   ├── Twig/                   # 3 analyzers
 │   ├── Deployment/             # 4 analyzers
 │   ├── Migration/              # 3 analyzers
@@ -528,7 +542,7 @@ sf_doctor:
 ## Tests
 
 ```bash
-# Lancer tous les tests (735+)
+# Lancer tous les tests (890+)
 vendor/bin/phpunit
 
 # Analyse statique (level 8)

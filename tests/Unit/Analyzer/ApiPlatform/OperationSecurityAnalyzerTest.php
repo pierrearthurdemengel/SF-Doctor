@@ -116,12 +116,14 @@ final class OperationSecurityAnalyzerTest extends TestCase
         $this->assertCount(1, $apiResourceIssues);
     }
 
-    // --- Cas avec probleme : operation individuelle sans security ---
+    // --- Heritage de securite ---
 
     /**
-     * #[Get] ou #[Post] sans security est un risque meme si ApiResource a security.
+     * En API Platform 3.x, les operations heritent de la securite du #[ApiResource] parent.
+     * #[Get] et #[Delete] sans security individuel ne doivent PAS lever de CRITICAL
+     * si #[ApiResource] a security.
      */
-    public function testOperationWithoutSecurityCreatesCritical(): void
+    public function testOperationInheritsResourceSecurityDoesNothing(): void
     {
         $content = "<?php\nnamespace App\\Entity;\n\n"
             . "use ApiPlatform\\Metadata\\ApiResource;\n"
@@ -137,18 +139,49 @@ final class OperationSecurityAnalyzerTest extends TestCase
 
         $report = $this->runAnalyzer();
 
-        // Les operations #[Get] et #[Delete] n'ont pas de security individuel.
+        // Les operations heritent de la securite du #[ApiResource] parent.
+        $criticals = $report->getIssuesBySeverity(Severity::CRITICAL);
+        $operationIssues = array_filter(
+            $criticals,
+            fn ($i) => str_contains($i->getMessage(), '#[Get]')
+                || str_contains($i->getMessage(), '#[Delete]'),
+        );
+        $this->assertCount(0, $operationIssues);
+    }
+
+    // --- Cas avec probleme : operation sans security ET sans heritage ---
+
+    /**
+     * #[Get] et #[Post] sans security ET sans security sur #[ApiResource]
+     * doivent lever un CRITICAL car aucune protection n'existe.
+     */
+    public function testOperationWithoutSecurityAndWithoutResourceSecurityCreatesCritical(): void
+    {
+        $content = "<?php\nnamespace App\\Entity;\n\n"
+            . "use ApiPlatform\\Metadata\\ApiResource;\n"
+            . "use ApiPlatform\\Metadata\\Get;\n"
+            . "use ApiPlatform\\Metadata\\Post;\n\n"
+            . "#[ApiResource]\n"
+            . "#[Get]\n"
+            . "#[Post]\n"
+            . "class Invoice {\n"
+            . "    private int \$id;\n"
+            . "}\n";
+        file_put_contents($this->tempDir . '/src/Entity/Invoice.php', $content);
+
+        $report = $this->runAnalyzer();
+
         $criticals = $report->getIssuesBySeverity(Severity::CRITICAL);
         $getIssues = array_filter(
             $criticals,
             fn ($i) => str_contains($i->getMessage(), '#[Get]'),
         );
-        $deleteIssues = array_filter(
+        $postIssues = array_filter(
             $criticals,
-            fn ($i) => str_contains($i->getMessage(), '#[Delete]'),
+            fn ($i) => str_contains($i->getMessage(), '#[Post]'),
         );
         $this->assertCount(1, $getIssues);
-        $this->assertCount(1, $deleteIssues);
+        $this->assertCount(1, $postIssues);
     }
 
     // --- Cas avec probleme : PUBLIC_ACCESS sur champ sensible ---

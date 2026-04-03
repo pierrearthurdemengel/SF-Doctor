@@ -108,6 +108,9 @@ final class OperationSecurityAnalyzer implements AnalyzerInterface
     /**
      * Detecte les operations #[ApiResource], #[Get], #[Post], etc. sans attribut security.
      * Une operation sans security est accessible a tous les visiteurs anonymes.
+     *
+     * En API Platform 3.x, les operations heritent de la securite du #[ApiResource] parent.
+     * Seules les operations SANS securite parente sont signalees comme CRITICAL.
      */
     private function checkOperationSecurity(
         AuditReport $report,
@@ -115,63 +118,93 @@ final class OperationSecurityAnalyzer implements AnalyzerInterface
         string $relativePath,
         string $filename,
     ): void {
-        // Verifie #[ApiResource] sans security.
-        if (preg_match('/#\[ApiResource\b[^]]*\]/', $content, $matches)) {
-            $apiResourceBlock = $matches[0];
+        $resourceHasSecurity = false;
 
-            if (!str_contains($apiResourceBlock, 'security')) {
-                $report->addIssue(new Issue(
-                    severity: Severity::CRITICAL,
-                    module: Module::API_PLATFORM,
-                    analyzer: $this->getName(),
-                    message: "#[ApiResource] sans attribut security dans {$filename}",
-                    detail: "L'entite '{$filename}' expose une ressource API Platform "
-                        . "sans aucun controle d'acces. Toutes les operations CRUD "
-                        . "sont accessibles par n'importe quel visiteur anonyme.",
-                    suggestion: "Ajouter un attribut security sur #[ApiResource] pour restreindre "
-                        . "l'acces, ou definir security sur chaque operation individuellement.",
-                    file: $relativePath,
-                    fixCode: "#[ApiResource(\n"
-                        . "    security: \"is_granted('ROLE_USER')\",\n"
-                        . ")]",
-                    docUrl: 'https://api-platform.com/docs/core/security/',
-                    businessImpact: 'Toutes les donnees de cette ressource sont accessibles sans authentification. '
-                        . 'Un attaquant peut lire, creer, modifier ou supprimer des enregistrements.',
-                    estimatedFixMinutes: 15,
-                ));
+        // Verifie #[ApiResource] sans security.
+        if (preg_match('/#\[ApiResource\b([^]]*)\]/s', $content, $matches)) {
+            $apiResourceBlock = $matches[0];
+            $resourceHasSecurity = str_contains($apiResourceBlock, 'security');
+
+            if (!$resourceHasSecurity) {
+                // Verifie si au moins une operation individuelle a security.
+                // Si aucune operation n'a security, la ressource est completement ouverte.
+                $anyOperationHasSecurity = false;
+                foreach (self::OPERATION_ATTRIBUTES as $op) {
+                    $opPattern = '/#\[' . $op . '\b[^]]*\]/s';
+                    if (preg_match_all($opPattern, $content, $opMatches)) {
+                        foreach ($opMatches[0] as $opBlock) {
+                            if (str_contains($opBlock, 'security')) {
+                                $anyOperationHasSecurity = true;
+                                break 2;
+                            }
+                        }
+                    }
+                }
+
+                if (!$anyOperationHasSecurity) {
+                    $report->addIssue(new Issue(
+                        severity: Severity::CRITICAL,
+                        module: Module::API_PLATFORM,
+                        analyzer: $this->getName(),
+                        message: "#[ApiResource] sans attribut security dans {$filename}",
+                        detail: "L'entite '{$filename}' expose une ressource API Platform "
+                            . "sans aucun controle d'acces. Toutes les operations CRUD "
+                            . "sont accessibles par n'importe quel visiteur anonyme.",
+                        suggestion: "Ajouter un attribut security sur #[ApiResource] pour restreindre "
+                            . "l'acces, ou definir security sur chaque operation individuellement.",
+                        file: $relativePath,
+                        fixCode: "#[ApiResource(\n"
+                            . "    security: \"is_granted('ROLE_USER')\",\n"
+                            . ")]",
+                        docUrl: 'https://api-platform.com/docs/core/security/',
+                        businessImpact: 'Toutes les donnees de cette ressource sont accessibles sans authentification. '
+                            . 'Un attaquant peut lire, creer, modifier ou supprimer des enregistrements.',
+                        estimatedFixMinutes: 15,
+                    ));
+                }
             }
         }
 
-        // Verifie les operations individuelles sans security.
+        // Verifie les operations individuelles.
+        // Si le #[ApiResource] parent a security, les operations heritent par defaut.
+        // Seules les operations sans securite ET sans heritage sont signalees.
         foreach (self::OPERATION_ATTRIBUTES as $operation) {
-            $pattern = '/#\[' . $operation . '\b[^]]*\]/';
+            $pattern = '/#\[' . $operation . '\b[^]]*\]/s';
 
             if (!preg_match_all($pattern, $content, $matches)) {
                 continue;
             }
 
             foreach ($matches[0] as $operationBlock) {
-                if (!str_contains($operationBlock, 'security')) {
-                    $report->addIssue(new Issue(
-                        severity: Severity::CRITICAL,
-                        module: Module::API_PLATFORM,
-                        analyzer: $this->getName(),
-                        message: "#[{$operation}] sans attribut security dans {$filename}",
-                        detail: "L'operation #{$operation} dans '{$filename}' n'a pas d'attribut security. "
-                            . "Cette operation est accessible a tout visiteur anonyme, "
-                            . "meme si #[ApiResource] a une restriction globale.",
-                        suggestion: "Ajouter security sur l'operation #[{$operation}] "
-                            . "ou verifier que la securite globale de #[ApiResource] couvre ce cas.",
-                        file: $relativePath,
-                        fixCode: "#[{$operation}(\n"
-                            . "    security: \"is_granted('ROLE_USER')\",\n"
-                            . ")]",
-                        docUrl: 'https://api-platform.com/docs/core/security/',
-                        businessImpact: "L'operation {$operation} est accessible sans authentification. "
-                            . "Selon l'operation, un attaquant peut lire ou modifier des donnees.",
-                        estimatedFixMinutes: 10,
-                    ));
+                if (str_contains($operationBlock, 'security')) {
+                    // L'operation a sa propre securite, pas de probleme.
+                    continue;
                 }
+
+                if ($resourceHasSecurity) {
+                    // L'operation herite de la securite du #[ApiResource] parent.
+                    continue;
+                }
+
+                $report->addIssue(new Issue(
+                    severity: Severity::CRITICAL,
+                    module: Module::API_PLATFORM,
+                    analyzer: $this->getName(),
+                    message: "#[{$operation}] sans attribut security dans {$filename}",
+                    detail: "L'operation {$operation} dans '{$filename}' n'a pas d'attribut security "
+                        . "et le #[ApiResource] parent n'en a pas non plus. "
+                        . "Cette operation est accessible a tout visiteur anonyme.",
+                    suggestion: "Ajouter security sur #[ApiResource] pour proteger toutes les operations, "
+                        . "ou ajouter security sur chaque operation individuellement.",
+                    file: $relativePath,
+                    fixCode: "#[{$operation}(\n"
+                        . "    security: \"is_granted('ROLE_USER')\",\n"
+                        . ")]",
+                    docUrl: 'https://api-platform.com/docs/core/security/',
+                    businessImpact: "L'operation {$operation} est accessible sans authentification. "
+                        . "Selon l'operation, un attaquant peut lire ou modifier des donnees.",
+                    estimatedFixMinutes: 10,
+                ));
             }
         }
     }

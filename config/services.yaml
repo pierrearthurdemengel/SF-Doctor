@@ -318,6 +318,88 @@ services:
         tags:
             - { name: sf_doctor.analyzer, module: api-platform }
 
+    PierreArthur\SfDoctor\Analyzer\ApiPlatform\DtoPatternAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: api-platform }
+
+    PierreArthur\SfDoctor\Analyzer\ApiPlatform\FilterConfigAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: api-platform }
+
+    PierreArthur\SfDoctor\Analyzer\ApiPlatform\DeprecatedAnnotationAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: api-platform }
+
+    PierreArthur\SfDoctor\Analyzer\ApiPlatform\SubresourceSecurityAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: api-platform }
+
+    PierreArthur\SfDoctor\Analyzer\ApiPlatform\OpenApiConfigAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: api-platform }
+
+    PierreArthur\SfDoctor\Analyzer\ApiPlatform\NormalizationContextAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: api-platform }
+
+    PierreArthur\SfDoctor\Analyzer\ApiPlatform\ApiPropertyConfigAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: api-platform }
+
+    PierreArthur\SfDoctor\Analyzer\ApiPlatform\GlobalApiPlatformConfigAnalyzer:
+        autowire: true
+        tags:
+            - { name: sf_doctor.analyzer, module: api-platform }
+
+    PierreArthur\SfDoctor\Analyzer\ApiPlatform\StateProviderProcessorAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: api-platform }
+
+    PierreArthur\SfDoctor\Analyzer\ApiPlatform\HttpCacheAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: api-platform }
+
+    PierreArthur\SfDoctor\Analyzer\ApiPlatform\RateLimitingAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: api-platform }
+
+    PierreArthur\SfDoctor\Analyzer\ApiPlatform\CircularReferenceAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: api-platform }
+
+    PierreArthur\SfDoctor\Analyzer\ApiPlatform\ResourceNamingAnalyzer:
+        arguments:
+            $projectPath: '%kernel.project_dir%'
+        tags:
+            - { name: sf_doctor.analyzer, module: api-platform }
+
+    PierreArthur\SfDoctor\Analyzer\ApiPlatform\DeprecatedConfigKeyAnalyzer:
+        autowire: true
+        tags:
+            - { name: sf_doctor.analyzer, module: api-platform }
+
     # --- Analyzers Migration ---
 
     PierreArthur\SfDoctor\Analyzer\Migration\BundleDependencyAnalyzer:

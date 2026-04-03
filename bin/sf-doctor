@@ -3,10 +3,24 @@
 
 require __DIR__ . '/../vendor/autoload.php';
 
+use PierreArthur\SfDoctor\Analyzer\ApiPlatform\ApiPropertyConfigAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\ApiPlatform\DeprecatedAnnotationAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\ApiPlatform\DtoPatternAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\ApiPlatform\FilterConfigAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\ApiPlatform\GlobalApiPlatformConfigAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\ApiPlatform\NormalizationContextAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\ApiPlatform\OpenApiConfigAnalyzer;
 use PierreArthur\SfDoctor\Analyzer\ApiPlatform\OperationSecurityAnalyzer;
 use PierreArthur\SfDoctor\Analyzer\ApiPlatform\PaginationAnalyzer;
 use PierreArthur\SfDoctor\Analyzer\ApiPlatform\SerializationGroupAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\ApiPlatform\SubresourceSecurityAnalyzer;
 use PierreArthur\SfDoctor\Analyzer\ApiPlatform\ValidationAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\ApiPlatform\StateProviderProcessorAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\ApiPlatform\HttpCacheAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\ApiPlatform\RateLimitingAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\ApiPlatform\CircularReferenceAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\ApiPlatform\ResourceNamingAnalyzer;
+use PierreArthur\SfDoctor\Analyzer\ApiPlatform\DeprecatedConfigKeyAnalyzer;
 use PierreArthur\SfDoctor\Analyzer\Architecture\ControllerAnalyzer;
 use PierreArthur\SfDoctor\Analyzer\Architecture\EventSubscriberAnalyzer;
 use PierreArthur\SfDoctor\Analyzer\Architecture\HeavyConstructorAnalyzer;
@@ -162,11 +176,25 @@ $analyzers = [
     new MessengerTransportAnalyzer($configReader),
     new MessengerSigningAnalyzer($configReader, $projectPath),
 
-    // API Platform (4)
+    // API Platform (18)
     new OperationSecurityAnalyzer($projectPath),
     new SerializationGroupAnalyzer($projectPath),
     new PaginationAnalyzer($configReader),
     new ValidationAnalyzer($projectPath),
+    new DtoPatternAnalyzer($projectPath),
+    new FilterConfigAnalyzer($projectPath),
+    new DeprecatedAnnotationAnalyzer($projectPath),
+    new SubresourceSecurityAnalyzer($projectPath),
+    new OpenApiConfigAnalyzer($projectPath),
+    new NormalizationContextAnalyzer($projectPath),
+    new ApiPropertyConfigAnalyzer($projectPath),
+    new GlobalApiPlatformConfigAnalyzer($configReader),
+    new StateProviderProcessorAnalyzer($projectPath),
+    new HttpCacheAnalyzer($projectPath),
+    new RateLimitingAnalyzer($projectPath),
+    new CircularReferenceAnalyzer($projectPath),
+    new ResourceNamingAnalyzer($projectPath),
+    new DeprecatedConfigKeyAnalyzer($configReader),
 
     // Twig (3)
     new TwigRawFilterAnalyzer($projectPath),
