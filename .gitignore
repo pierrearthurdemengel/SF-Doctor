@@ -29,5 +29,6 @@ Thumbs.db
 .phpunit.result.cache
 
 # Fichiers de suivi du projet (notes perso, specs de travail)
-PROMPT-SF-DOCTOR.md
-SF-DOCTOR-SPEC.md
+PROMPT-SF-DOCTOR*.md
+SF-DOCTOR-SPEC*.md
+SUIVI-SF-DOCTOR*.md
